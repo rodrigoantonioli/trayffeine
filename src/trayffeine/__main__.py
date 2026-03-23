@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from .app import run_app
+from trayffeine.app import run_app
 
 
 def main() -> None:
@@ -13,4 +13,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

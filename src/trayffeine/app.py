@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from .service import TrayffeineService
-from .tray import TrayIconController
-from .windows import SingleInstanceGuard, WindowsInputBackend
-
 
 def run_app() -> None:
+    from .service import TrayffeineService
+    from .tray import TrayIconController
+    from .windows import SingleInstanceGuard, WindowsInputBackend
+
     guard = SingleInstanceGuard.acquire("Local\\TrayffeineSingleInstance")
     if not guard.acquired:
         return
@@ -17,4 +17,3 @@ def run_app() -> None:
     finally:
         service.quit()
         guard.release()
-
