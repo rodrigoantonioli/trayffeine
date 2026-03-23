@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trayffeine"
+version = "0.1.0"
+description = "Small Windows tray app that keeps the computer awake."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "Rodrigo Antonioli" }
+]
+dependencies = [
+  "Pillow>=11.0.0",
+  "pystray>=0.19.5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "ruff>=0.9.0",
+]
+build = [
+  "pyinstaller>=6.11.0",
+]
+
+[project.scripts]
+trayffeine = "trayffeine.__main__:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
