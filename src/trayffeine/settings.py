@@ -15,6 +15,7 @@ LOGGER = logging.getLogger(__name__)
 class StoredSettings:
     language_selection: LanguageSelection
     restore_infinite: bool = False
+    detailed_logging_enabled: bool = False
 
 
 class SettingsStore:
@@ -58,6 +59,7 @@ def _serialize_settings(settings: StoredSettings) -> dict[str, object]:
             "locale": settings.language_selection.locale,
         },
         "restore_infinite": settings.restore_infinite,
+        "detailed_logging_enabled": settings.detailed_logging_enabled,
     }
 
 
@@ -66,11 +68,13 @@ def _deserialize_settings(payload: object) -> StoredSettings:
         return StoredSettings(language_selection=LanguageSelection.auto())
 
     restore_infinite = bool(payload.get("restore_infinite", False))
+    detailed_logging_enabled = bool(payload.get("detailed_logging_enabled", False))
     raw_language = payload.get("language_selection")
     language_selection = _deserialize_language_selection(raw_language)
     return StoredSettings(
         language_selection=language_selection,
         restore_infinite=restore_infinite,
+        detailed_logging_enabled=detailed_logging_enabled,
     )
 
 

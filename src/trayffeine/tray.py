@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -44,12 +43,28 @@ class TrayIconController:
         initial_language_selection: LanguageSelection | None = None,
         settings_store: SettingsStore | None = None,
         open_logs_folder: Callable[[], None] | None = None,
+        clear_logs: Callable[[], None] | None = None,
+        confirm_clear_logs: Callable[[str, str], bool] | None = None,
+        set_detailed_logging_enabled: Callable[[bool], None] | None = None,
+        detailed_logging_enabled: bool = False,
+        detailed_logging_preference: bool | None = None,
+        detailed_logging_locked: bool = False,
     ) -> None:
         self._service = service
         self._system_locale = system_locale
         self._language_selection = initial_language_selection or LanguageSelection.auto()
         self._settings_store = settings_store
         self._open_logs_folder_callback = open_logs_folder
+        self._clear_logs_callback = clear_logs
+        self._confirm_clear_logs_callback = confirm_clear_logs
+        self._set_detailed_logging_enabled_callback = set_detailed_logging_enabled
+        self._detailed_logging_enabled = detailed_logging_enabled
+        self._detailed_logging_preference = (
+            detailed_logging_enabled
+            if detailed_logging_preference is None
+            else detailed_logging_preference
+        )
+        self._detailed_logging_locked = detailed_logging_locked
         self._service.set_callbacks(
             on_state_change=self._handle_state_change,
             on_timer_finished=self._notify_timer_finished,
@@ -74,7 +89,6 @@ class TrayIconController:
 
     def _setup(self, icon: Icon) -> None:
         icon.visible = True
-        LOGGER.info("Tray icon visible on thread=%s", threading.current_thread().name)
 
     def _build_menu(self) -> Menu:
         _, Menu, MenuItem = _pystray_types()
@@ -111,12 +125,12 @@ class TrayIconController:
                     enabled=self._static_bool(stop_entry.enabled),
                 ),
                 Menu.SEPARATOR,
-                MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
                 MenuItem(
-                    translator.t("tray.menu.open_logs"),
-                    self._on_open_logs,
-                    enabled=self._static_bool(self._open_logs_folder_callback is not None),
+                    translator.t("tray.menu.preferences"),
+                    self._build_preferences_menu(),
                 ),
+                MenuItem(translator.t("tray.menu.support"), self._build_support_menu()),
+                Menu.SEPARATOR,
                 MenuItem(quit_entry.text, self._on_quit),
             ]
         )
@@ -156,9 +170,42 @@ class TrayIconController:
             ]
         )
 
+    def _build_preferences_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
+        translator = self._translator()
+        return Menu(
+            MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
+            MenuItem(
+                translator.t("tray.menu.detailed_logging"),
+                self._on_toggle_detailed_logging,
+                checked=self._static_bool(self._detailed_logging_enabled),
+                enabled=self._static_bool(
+                    self._set_detailed_logging_enabled_callback is not None
+                    and not self._detailed_logging_locked
+                ),
+            ),
+        )
+
+    def _build_support_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
+        translator = self._translator()
+        return Menu(
+            MenuItem(
+                translator.t("tray.menu.open_logs"),
+                self._on_open_logs,
+                enabled=self._static_bool(self._open_logs_folder_callback is not None),
+            ),
+            MenuItem(
+                translator.t("tray.menu.clear_logs"),
+                self._on_clear_logs,
+                enabled=self._static_bool(self._clear_logs_callback is not None),
+            ),
+        )
+
     def _make_activate_handler(self, preset_key: str):
         def handler(icon: Icon, item: MenuItem) -> None:  # noqa: ARG001
             preset = PRESET_BY_KEY[preset_key]
+            LOGGER.info("Timed preset selected from tray menu: %s", preset.key)
             self._service.activate(preset.duration, preset.key)
 
         return handler
@@ -170,23 +217,62 @@ class TrayIconController:
             else:
                 self._language_selection = LanguageSelection.explicit(selection_key)
             self._persist_settings()
+            LOGGER.info("Language selection changed from tray menu: %s", selection_key)
             self._request_refresh()
 
         return handler
 
     def _on_deactivate(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        LOGGER.info("Session stopped from tray menu")
         self._service.deactivate()
 
     def _on_activate_infinite(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        LOGGER.info("Infinite mode enabled from tray menu")
         self._service.activate(None, "infinite")
 
     def _on_open_logs(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         if self._open_logs_folder_callback is None:
             return
         try:
+            LOGGER.info("Opening logs folder from tray menu")
             self._open_logs_folder_callback()
         except Exception:
             LOGGER.exception("Failed to open Trayffeine logs folder")
+
+    def _on_clear_logs(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        if self._clear_logs_callback is None:
+            return
+
+        translator = self._translator()
+        if self._confirm_clear_logs_callback is not None:
+            confirmed = self._confirm_clear_logs_callback(
+                translator.t("tray.logs.clear.title"),
+                translator.t("tray.logs.clear.body"),
+            )
+            if not confirmed:
+                return
+
+        try:
+            self._clear_logs_callback()
+        except Exception:
+            LOGGER.exception("Failed to clear Trayffeine logs")
+
+    def _on_toggle_detailed_logging(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        if self._detailed_logging_locked:
+            return
+
+        enabled = not self._detailed_logging_enabled
+        if self._set_detailed_logging_enabled_callback is not None:
+            try:
+                self._set_detailed_logging_enabled_callback(enabled)
+            except Exception:
+                LOGGER.exception("Failed to change detailed logging state")
+                return
+
+        self._detailed_logging_enabled = enabled
+        self._detailed_logging_preference = enabled
+        self._persist_settings()
+        self._request_refresh()
 
     def _on_quit(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         self._service.quit()
@@ -197,18 +283,11 @@ class TrayIconController:
         self._request_refresh()
 
     def _request_refresh(self) -> None:
-        LOGGER.info("Queueing tray refresh from thread=%s", threading.current_thread().name)
         invoke_icon_callback(self._icon, self._refresh)
 
     def _refresh(self) -> None:
         snapshot = self._service.snapshot()
         translator = self._translator()
-        LOGGER.info(
-            "Refreshing tray state kind=%s locale=%s thread=%s",
-            snapshot.mode.kind,
-            self._effective_locale(),
-            threading.current_thread().name,
-        )
         self._icon.icon = self._images[icon_variant(snapshot.mode, snapshot.now)]
         self._icon.title = tooltip_text(snapshot.mode, snapshot.now, translator)
         self._icon.menu = self._build_menu()
@@ -217,6 +296,7 @@ class TrayIconController:
 
     def _notify_timer_finished(self) -> None:
         self._persist_settings()
+        LOGGER.info("Timed session finished and Trayffeine returned to inactive mode")
         invoke_icon_callback(self._icon, self._show_timer_finished_notification)
 
     def _show_timer_finished_notification(self) -> None:
@@ -228,6 +308,11 @@ class TrayIconController:
             return
 
     def _toggle_infinite(self) -> None:
+        snapshot = self._service.snapshot()
+        if snapshot.mode.is_active(snapshot.now):
+            LOGGER.info("Double-click disabled the active Trayffeine session")
+        else:
+            LOGGER.info("Double-click enabled infinite mode")
         self._service.toggle_infinite()
 
     def _translator(self) -> Translator:
@@ -256,6 +341,7 @@ class TrayIconController:
                 snapshot.mode.kind == "infinite"
                 and snapshot.mode.is_active(snapshot.now)
             ),
+            detailed_logging_enabled=self._detailed_logging_preference,
         )
         self._settings_store.save(settings)
 

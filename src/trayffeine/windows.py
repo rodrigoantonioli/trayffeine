@@ -20,6 +20,9 @@ ERROR_ALREADY_EXISTS = 183
 ULONG_PTR = ctypes.c_size_t
 MB_OK = 0x00000000
 MB_ICONERROR = 0x00000010
+MB_ICONQUESTION = 0x00000020
+MB_YESNO = 0x00000004
+IDYES = 6
 
 
 class MOUSEINPUT(ctypes.Structure):
@@ -100,6 +103,11 @@ class WindowsInputBackend:
 
 def show_message_box(title: str, message: str) -> None:
     user32.MessageBoxW(None, message, title, MB_OK | MB_ICONERROR)
+
+
+def confirm_message_box(title: str, message: str) -> bool:
+    result = user32.MessageBoxW(None, message, title, MB_YESNO | MB_ICONQUESTION)
+    return result == IDYES
 
 
 def open_path_in_shell(path: str | Path) -> None:

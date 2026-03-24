@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file is for coding agents working in this repository. It explains the current architecture, operational constraints, and the expected workflow so another AI can continue work without rediscovering the project.
+This file is for coding agents working in this repository. It explains the current architecture, operational constraints, and expected workflow so another agent can continue work without rediscovering the project.
 
 ## Product Summary
 
@@ -11,7 +11,7 @@ Primary product behavior:
 - no main window
 - tray icon with active/inactive states and a pressed-looking active variant
 - presets: `15m`, `30m`, `1h`, `2h`, `infinite`
-- tray menu shows a stable status summary while the live counter stays in the tooltip
+- tray menu shows stable summary rows while the live counter stays in the tooltip
 - timer expiration returns the app to inactive mode
 - one notification when a timed session ends
 - single-instance guard on Windows
@@ -19,7 +19,9 @@ Primary product behavior:
 - persistent language selection
 - infinite mode can be restored on relaunch, but timed sessions always start inactive
 - double-click on the tray icon toggles infinite mode
-- tray support action can open the logs folder
+- grouped tray menu with `Preferences` and `Support`
+- persistent detailed logging toggle
+- support actions to open or clear the logs folder
 - unhandled exceptions are logged and surfaced in a Windows error dialog
 
 ## Environment Model
@@ -46,10 +48,17 @@ For real tray validation, run the app from Windows in a real Windows path.
 
 - `src/trayffeine/app.py`
   - runtime bootstrap
+  - loads persisted settings before final log-level selection
+  - applies env-override vs persisted detailed-logging preference
   - acquires the Windows single-instance mutex
-  - detects the system locale
-  - loads persisted settings and wires the service to the tray controller
-  - owns the top-level crash boundary and crash dialog path
+  - wires service, tray callbacks, support actions, and crash boundary
+
+- `src/trayffeine/app_logging.py`
+  - rotating file logger configuration
+  - log-level resolution
+  - env override detection
+  - runtime log-level switching without duplicating handlers
+  - log-file cleanup helpers
 
 - `src/trayffeine/service.py`
   - background worker loop
@@ -63,7 +72,7 @@ For real tray validation, run the app from Windows in a real Windows path.
 
 - `src/trayffeine/presenter.py`
   - presentation-only logic
-  - owns tooltip text, menu labels, timer-finished notification payload, and language menu entries
+  - owns tooltip text, stable menu summary text, timer-finished notification payload, and language menu entries
   - this is the right place for text assembly, not `service.py` or `session.py`
 
 - `src/trayffeine/i18n.py`
@@ -74,15 +83,15 @@ For real tray validation, run the app from Windows in a real Windows path.
 
 - `src/trayffeine/tray.py`
   - pystray integration
-  - menu rebuilding
-  - persistent language selection
+  - grouped menu rebuilding
+  - persistent language and detailed-logging preferences
   - double-click toggle handling
   - icon refresh and notification dispatch
-  - support action for opening the logs folder
+  - support actions for opening and clearing logs
 
 - `src/trayffeine/settings.py`
   - persisted settings storage
-  - stores language selection and infinite-mode restore flag only
+  - stores language selection, infinite-mode restore flag, and detailed-logging preference
 
 - `src/trayffeine/win32_tray.py`
   - Windows-specific tray icon wrapper
@@ -92,7 +101,8 @@ For real tray validation, run the app from Windows in a real Windows path.
   - Windows-specific backend only
   - `SendInput` for `F15`
   - named mutex handling
-  - message box helper
+  - message-box helper
+  - confirmation-dialog helper
   - shell-open helper for logs
 
 - `packaging/windows/`
@@ -106,8 +116,8 @@ For real tray validation, run the app from Windows in a real Windows path.
   - `session.py` should contain stable keys and time math.
   - localized strings belong in `i18n.py` and `presenter.py`.
 
-- Do not hardcode user-facing strings in `tray.py` or `app.py` if they are part of the runtime UI.
-  - new tray labels, tooltip text, and notifications should go through the translator.
+- Do not hardcode user-facing runtime text in `tray.py` or `app.py`.
+  - tray labels, confirmation text, tooltip text, and notifications should go through the translator.
 
 - Preserve stable preset keys.
   - `15m`, `30m`, `1h`, `2h`, `infinite`
@@ -119,6 +129,10 @@ For real tray validation, run the app from Windows in a real Windows path.
 - Manual language selection persists across launches.
   - `Auto` still follows the system locale
   - timed sessions still start inactive on relaunch
+
+- Detailed logging persists across launches unless the process is locked by `TRAYFFEINE_LOG_LEVEL`.
+  - env override wins for that process
+  - when env override is present, the tray toggle should be disabled to avoid lying about the effective level
 
 ## Localization Model
 
@@ -143,8 +157,70 @@ When extending localization:
 
 - add new message ids to the catalogs in `i18n.py`
 - keep ids stable and presentation-oriented
-- add or update presenter tests
+- add or update presenter and tray tests
 - avoid leaking localized text into state or backend code
+- keep correct accents and natural spelling in every language
+
+## Logging Model
+
+Current runtime log file:
+
+- `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
+
+Rotation defaults:
+
+- `256 KB`
+- `3` backups
+
+Logging policy:
+
+- default runtime level is `WARNING`
+- detailed logging maps to `INFO`
+- meaningful user and lifecycle actions may be logged at `INFO`
+- high-frequency internal events must not be logged at `INFO`
+  - do not log every tick
+  - do not log every menu rebuild
+  - do not log every tray refresh callback
+
+Useful `INFO` events:
+
+- app start and exit
+- preset selection
+- infinite enable/disable
+- timer expiration
+- language changes
+- opening logs folder
+- enabling or disabling detailed logging
+- clearing logs
+
+When changing logging:
+
+- do not duplicate root handlers
+- keep `TRAYFFEINE_LOG_LEVEL` precedence intact
+- if logs are cleared, recreate a fresh current log file immediately
+
+## Tray UX Notes
+
+- The Windows tray menu is a native popup built through `pystray` and `TrackPopupMenuEx`.
+- Once that popup is open, its contents are effectively static until it closes.
+- Because of that platform limitation, volatile values such as per-second timers should live in the tray tooltip, not in the open menu.
+- The menu itself should prefer stable summary rows and grouped actions.
+
+Current menu layout:
+
+- header row
+- stable summary row
+- primary actions
+  - `Infinite mode`
+  - `Activate for >`
+  - `Stop`
+- `Preferences >`
+  - `Language >`
+  - `Detailed logging`
+- `Support >`
+  - `Open Logs Folder`
+  - `Clear Logs`
+- `Quit`
 
 ## Testing Expectations
 
@@ -163,7 +239,8 @@ Current tests cover:
 - presenter output across locales
 - session timing behavior
 - `__main__` packaging regression
-- tray controller smoke construction
+- tray controller smoke construction and grouped menu wiring
+- runtime log configuration and log cleanup helpers
 - Windows tray double-click wrapper routing
 
 What tests do not guarantee:
@@ -176,7 +253,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.5.0-beta2`.
+- Project version is currently `0.6.0`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -185,23 +262,17 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 GitHub workflows:
 
-## Tray UX Notes
-
-- The Windows tray menu is a native popup built through `pystray`/`TrackPopupMenuEx`.
-- Once that popup is open, its contents are effectively static until it closes.
-- Because of that platform limitation, volatile values such as per-second timers should live in the tray tooltip, not in the open menu.
-- The menu itself should prefer stable summary rows and direct actions.
-
 - `CI` runs on push to `main` and on pull requests.
 - `Release` runs only on tags `v*`.
 - Windows installers are produced only by the release workflow.
-- Tags matching `v*-beta*` are intended to be published as GitHub prereleases.
+- stable tags such as `v0.6.0` publish normal releases
+- tags matching `v*-beta*` publish GitHub prereleases
 
 If you change packaging or release behavior, verify that:
 
 - tag pushes do not trigger redundant CI runs
 - the Windows workflow still uploads the installer artifact
-- the release workflow publishes via `gh` rather than a deprecated JS release action
+- the release workflow still publishes via `gh`
 
 ## Known Constraints
 
@@ -215,6 +286,7 @@ If you change packaging or release behavior, verify that:
 
 - If the task is UI text, start in `i18n.py` and `presenter.py`.
 - If the task is timing/behavior, start in `service.py` and `session.py`.
-- If the task is system tray/menu behavior, start in `tray.py`.
+- If the task is tray/menu behavior, start in `tray.py`.
+- If the task is logging behavior, start in `app_logging.py` and `app.py`.
 - If the task is packaging or artifact generation, start in `packaging/windows/` and `.github/workflows/`.
 - Do not remove the Windows smoke assumptions from the docs unless you have actually validated the behavior on Windows.
