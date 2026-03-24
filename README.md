@@ -282,3 +282,7 @@ When reporting a bug, include:
 - your Windows version
 - steps to reproduce
 - the contents of `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
+
+## License
+
+Trayffeine is available under the [MIT License](/home/rodrigoantonioli/trayffeine/LICENSE).
