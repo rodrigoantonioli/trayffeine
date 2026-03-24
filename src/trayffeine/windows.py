@@ -9,41 +9,68 @@ from pathlib import Path
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
+WORD = ctypes.c_uint16
+DWORD = ctypes.c_uint32
+LONG = ctypes.c_int32
+UINT = ctypes.c_uint
 INPUT_KEYBOARD = 1
 KEYEVENTF_KEYUP = 0x0002
 VK_F15 = 0x7E
 ERROR_ALREADY_EXISTS = 183
-ULONG_PTR = wintypes.WPARAM
+ULONG_PTR = ctypes.c_size_t
 MB_OK = 0x00000000
 MB_ICONERROR = 0x00000010
 
 
-class KEYBDINPUT(ctypes.Structure):
+class MOUSEINPUT(ctypes.Structure):
     _fields_ = [
-        ("wVk", wintypes.WORD),
-        ("wScan", wintypes.WORD),
-        ("dwFlags", wintypes.DWORD),
-        ("time", wintypes.DWORD),
+        ("dx", LONG),
+        ("dy", LONG),
+        ("mouseData", DWORD),
+        ("dwFlags", DWORD),
+        ("time", DWORD),
         ("dwExtraInfo", ULONG_PTR),
     ]
 
 
+class KEYBDINPUT(ctypes.Structure):
+    _fields_ = [
+        ("wVk", WORD),
+        ("wScan", WORD),
+        ("dwFlags", DWORD),
+        ("time", DWORD),
+        ("dwExtraInfo", ULONG_PTR),
+    ]
+
+
+class HARDWAREINPUT(ctypes.Structure):
+    _fields_ = [
+        ("uMsg", DWORD),
+        ("wParamL", WORD),
+        ("wParamH", WORD),
+    ]
+
+
 class _INPUTUNION(ctypes.Union):
-    _fields_ = [("ki", KEYBDINPUT)]
+    _fields_ = [
+        ("mi", MOUSEINPUT),
+        ("ki", KEYBDINPUT),
+        ("hi", HARDWAREINPUT),
+    ]
 
 
 class INPUT(ctypes.Structure):
     _anonymous_ = ("u",)
     _fields_ = [
-        ("type", wintypes.DWORD),
+        ("type", DWORD),
         ("u", _INPUTUNION),
     ]
 
 
 LPINPUT = ctypes.POINTER(INPUT)
 
-user32.SendInput.argtypes = (wintypes.UINT, LPINPUT, ctypes.c_int)
-user32.SendInput.restype = wintypes.UINT
+user32.SendInput.argtypes = (UINT, LPINPUT, ctypes.c_int)
+user32.SendInput.restype = UINT
 kernel32.CreateMutexW.argtypes = (ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR)
 kernel32.CreateMutexW.restype = wintypes.HANDLE
 kernel32.ReleaseMutex.argtypes = (wintypes.HANDLE,)

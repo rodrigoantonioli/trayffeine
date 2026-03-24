@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.5.0-beta1",
+    [string]$Version = "0.5.0-beta2",
     [switch]$Clean
 )
 

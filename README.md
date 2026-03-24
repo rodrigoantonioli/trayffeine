@@ -72,7 +72,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.5.0-beta1 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.5.0-beta2 -Clean
 ```
 
 ## GitHub Actions
