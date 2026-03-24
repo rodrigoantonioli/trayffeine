@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from PIL import Image, ImageDraw
-from pystray import Icon, Menu, MenuItem
 
 from .assets import asset_path
 from .i18n import LanguageSelection, LocaleCode, Translator, effective_locale
@@ -23,6 +23,15 @@ from .settings import SettingsStore, StoredSettings
 from .win32_tray import create_icon
 
 LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from pystray import Icon, Menu, MenuItem
+
+
+def _pystray_types() -> tuple[Any, Any, Any]:
+    from pystray import Icon, Menu, MenuItem
+
+    return Icon, Menu, MenuItem
 
 
 class TrayIconController:
@@ -48,6 +57,7 @@ class TrayIconController:
             "inactive": self._load_image("trayffeine-inactive.png", fill="#8b96a5"),
         }
         translator = self._translator()
+        _, _, _ = _pystray_types()
         self._icon = create_icon(
             name="trayffeine",
             title=app_name(translator),
@@ -64,6 +74,7 @@ class TrayIconController:
         self._refresh()
 
     def _build_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
         snapshot = self._service.snapshot()
         translator = self._translator()
         status_entries = build_status_entries(snapshot.mode, snapshot.now, translator)
@@ -104,6 +115,7 @@ class TrayIconController:
         return Menu(*items)
 
     def _build_language_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
         translator = self._translator()
         entries = build_language_menu_entries(
             self._language_selection,
