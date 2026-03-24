@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ctypes
+import os
 from ctypes import wintypes
 from dataclasses import dataclass
+from pathlib import Path
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -12,6 +14,8 @@ KEYEVENTF_KEYUP = 0x0002
 VK_F15 = 0x7E
 ERROR_ALREADY_EXISTS = 183
 ULONG_PTR = wintypes.WPARAM
+MB_OK = 0x00000000
+MB_ICONERROR = 0x00000010
 
 
 class KEYBDINPUT(ctypes.Structure):
@@ -46,6 +50,13 @@ kernel32.ReleaseMutex.argtypes = (wintypes.HANDLE,)
 kernel32.ReleaseMutex.restype = wintypes.BOOL
 kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
 kernel32.CloseHandle.restype = wintypes.BOOL
+user32.MessageBoxW.argtypes = (
+    wintypes.HWND,
+    wintypes.LPCWSTR,
+    wintypes.LPCWSTR,
+    wintypes.UINT,
+)
+user32.MessageBoxW.restype = ctypes.c_int
 
 
 class WindowsInputBackend:
@@ -58,6 +69,14 @@ class WindowsInputBackend:
         if sent != len(inputs):
             error_code = ctypes.get_last_error()
             raise OSError(error_code, "SendInput failed")
+
+
+def show_message_box(title: str, message: str) -> None:
+    user32.MessageBoxW(None, message, title, MB_OK | MB_ICONERROR)
+
+
+def open_path_in_shell(path: str | Path) -> None:
+    os.startfile(str(path))  # type: ignore[attr-defined]
 
 
 @dataclass
@@ -84,4 +103,3 @@ class SingleInstanceGuard:
         kernel32.ReleaseMutex(self.handle)
         kernel32.CloseHandle(self.handle)
         self.handle = None
-

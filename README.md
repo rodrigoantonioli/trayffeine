@@ -16,11 +16,12 @@ It is developed from WSL, but the official Windows build is produced in GitHub A
 - Persistent language selection from the tray menu, with fallback to English
 - Infinite mode can be restored on the next launch, while timed sessions still start inactive
 - Double-clicking the tray icon toggles infinite mode on and off
+- The tray menu can open the logs folder for support and bug reports
 
 ## Project Layout
 
 - `src/trayffeine/app.py`: runtime bootstrap and single-instance startup flow
-- `src/trayffeine/tray.py`: tray icon, menu, language switching, double-click handling, notifications
+- `src/trayffeine/tray.py`: tray icon, menu, language switching, double-click handling, notifications, support actions
 - `src/trayffeine/service.py`: background worker that drives keep-awake timing and live status refresh
 - `src/trayffeine/session.py`: session state and stable preset keys
 - `src/trayffeine/presenter.py`: presentation helpers for menu, tooltip, live status, and notifications
@@ -71,7 +72,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.4.1 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.5.0-beta1 -Clean
 ```
 
 ## GitHub Actions
@@ -80,6 +81,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.
 - `Release`: runs only on tags matching `v*`
 - Official releases are generated from the Windows workflow and uploaded as GitHub release assets
 - Release publishing uses the `gh` CLI on the Windows runner, which avoids the old Node 20 release action warning
+- Tags matching `v*-beta*` are published as GitHub prereleases
 
 ## Localization Notes
 
@@ -107,3 +109,16 @@ Runtime logs are written to `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log` on W
 They rotate automatically at `256 KB` with `3` backups.
 The default log level is `WARNING`; use `TRAYFFEINE_LOG_LEVEL=INFO` only when diagnosing tray issues.
 The native Windows tray menu does not live-refresh while it is open, so Trayffeine keeps the precise live counter in the icon tooltip instead.
+
+## Beta Notes
+
+- Beta builds are Windows-only and currently intended for a small closed group of testers.
+- The installer is unsigned, so Windows and SmartScreen warnings are expected.
+- Use the tray action `Open Logs Folder` to reach `%LOCALAPPDATA%\Trayffeine\logs`.
+- If the app crashes, it writes the traceback to the log file and shows a small dialog pointing to the logs folder.
+- Report bugs with:
+  - the exact Trayffeine version
+  - your Windows version
+  - steps to reproduce
+  - the contents of `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
+- Known limitation: the native Windows tray menu does not live-refresh while it is open.

@@ -11,7 +11,7 @@ Primary product behavior:
 - no main window
 - tray icon with active/inactive states and a pressed-looking active variant
 - presets: `15m`, `30m`, `1h`, `2h`, `infinite`
-- tray menu shows app name/version plus live elapsed and remaining status rows
+- tray menu shows a stable status summary while the live counter stays in the tooltip
 - timer expiration returns the app to inactive mode
 - one notification when a timed session ends
 - single-instance guard on Windows
@@ -19,6 +19,8 @@ Primary product behavior:
 - persistent language selection
 - infinite mode can be restored on relaunch, but timed sessions always start inactive
 - double-click on the tray icon toggles infinite mode
+- tray support action can open the logs folder
+- unhandled exceptions are logged and surfaced in a Windows error dialog
 
 ## Environment Model
 
@@ -47,6 +49,7 @@ For real tray validation, run the app from Windows in a real Windows path.
   - acquires the Windows single-instance mutex
   - detects the system locale
   - loads persisted settings and wires the service to the tray controller
+  - owns the top-level crash boundary and crash dialog path
 
 - `src/trayffeine/service.py`
   - background worker loop
@@ -75,6 +78,7 @@ For real tray validation, run the app from Windows in a real Windows path.
   - persistent language selection
   - double-click toggle handling
   - icon refresh and notification dispatch
+  - support action for opening the logs folder
 
 - `src/trayffeine/settings.py`
   - persisted settings storage
@@ -88,6 +92,8 @@ For real tray validation, run the app from Windows in a real Windows path.
   - Windows-specific backend only
   - `SendInput` for `F15`
   - named mutex handling
+  - message box helper
+  - shell-open helper for logs
 
 - `packaging/windows/`
   - `trayffeine.spec`: PyInstaller bundle definition
@@ -170,7 +176,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.4.1`.
+- Project version is currently `0.5.0-beta1`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -189,6 +195,7 @@ GitHub workflows:
 - `CI` runs on push to `main` and on pull requests.
 - `Release` runs only on tags `v*`.
 - Windows installers are produced only by the release workflow.
+- Tags matching `v*-beta*` are intended to be published as GitHub prereleases.
 
 If you change packaging or release behavior, verify that:
 

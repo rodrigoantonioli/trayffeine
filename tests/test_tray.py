@@ -205,3 +205,32 @@ def test_double_click_toggles_any_active_mode_back_to_inactive(monkeypatch) -> N
     controller._toggle_infinite()
 
     assert service.mode.kind == "off"
+
+
+def test_tray_controller_exposes_open_logs_action(monkeypatch) -> None:
+    fake_pystray = ModuleType("pystray")
+    fake_pystray.Icon = FakeIcon
+    fake_pystray.Menu = FakeMenu
+    fake_pystray.MenuItem = FakeMenuItem
+
+    monkeypatch.setitem(sys.modules, "pystray", fake_pystray)
+    sys.modules.pop("trayffeine.win32_tray", None)
+    sys.modules.pop("trayffeine.tray", None)
+    tray_module = importlib.import_module("trayffeine.tray")
+
+    opened: list[str] = []
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        open_logs_folder=lambda: opened.append("logs"),
+    )
+
+    logs_item = next(
+        item
+        for item in controller._icon.menu.items
+        if getattr(item, "text", "") == "Open Logs Folder"
+    )
+
+    logs_item.action(None, None)
+
+    assert opened == ["logs"]

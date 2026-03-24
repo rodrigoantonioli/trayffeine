@@ -15,6 +15,8 @@ Catalog = dict[str, str]
 CATALOGS: dict[LocaleCode, Catalog] = {
     "en": {
         "app.name": "Trayffeine",
+        "app.crash.title": "Trayffeine",
+        "app.crash.body": "Trayffeine hit an unexpected error.\n\nSee logs in:\n{log_dir}",
         "tray.tooltip.active_infinite": "Trayffeine: active for {elapsed} | infinite",
         "tray.tooltip.active_remaining": "Trayffeine: active for {elapsed} | {remaining} left",
         "tray.tooltip.inactive": "Trayffeine: inactive",
@@ -22,6 +24,7 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.infinite": "Infinite mode",
         "tray.menu.activate_for": "Activate for",
         "tray.menu.stop": "Stop",
+        "tray.menu.open_logs": "Open Logs Folder",
         "tray.menu.quit": "Quit",
         "tray.menu.language": "Language",
         "tray.menu.language.auto": "Auto",
@@ -45,6 +48,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
     },
     "pt-BR": {
         "app.name": "Trayffeine",
+        "app.crash.title": "Trayffeine",
+        "app.crash.body": (
+            "O Trayffeine encontrou um erro inesperado.\n\nVeja os logs em:\n{log_dir}"
+        ),
         "tray.tooltip.active_infinite": "Trayffeine: ativo há {elapsed} | infinito",
         "tray.tooltip.active_remaining": "Trayffeine: ativo há {elapsed} | faltam {remaining}",
         "tray.tooltip.inactive": "Trayffeine: inativo",
@@ -52,6 +59,7 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.infinite": "Modo infinito",
         "tray.menu.activate_for": "Ativar por",
         "tray.menu.stop": "Parar",
+        "tray.menu.open_logs": "Abrir pasta de logs",
         "tray.menu.quit": "Sair",
         "tray.menu.language": "Idioma",
         "tray.menu.language.auto": "Auto",
@@ -75,6 +83,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
     },
     "es": {
         "app.name": "Trayffeine",
+        "app.crash.title": "Trayffeine",
+        "app.crash.body": (
+            "Trayffeine encontró un error inesperado.\n\nConsulta los logs en:\n{log_dir}"
+        ),
         "tray.tooltip.active_infinite": "Trayffeine: activo hace {elapsed} | infinito",
         "tray.tooltip.active_remaining": "Trayffeine: activo hace {elapsed} | quedan {remaining}",
         "tray.tooltip.inactive": "Trayffeine: inactivo",
@@ -82,6 +94,7 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.infinite": "Modo infinito",
         "tray.menu.activate_for": "Activar por",
         "tray.menu.stop": "Detener",
+        "tray.menu.open_logs": "Abrir carpeta de logs",
         "tray.menu.quit": "Salir",
         "tray.menu.language": "Idioma",
         "tray.menu.language.auto": "Auto",

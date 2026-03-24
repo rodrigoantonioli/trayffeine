@@ -43,11 +43,13 @@ class TrayIconController:
         system_locale: LocaleCode,
         initial_language_selection: LanguageSelection | None = None,
         settings_store: SettingsStore | None = None,
+        open_logs_folder: Callable[[], None] | None = None,
     ) -> None:
         self._service = service
         self._system_locale = system_locale
         self._language_selection = initial_language_selection or LanguageSelection.auto()
         self._settings_store = settings_store
+        self._open_logs_folder_callback = open_logs_folder
         self._service.set_callbacks(
             on_state_change=self._handle_state_change,
             on_timer_finished=self._notify_timer_finished,
@@ -110,6 +112,11 @@ class TrayIconController:
                 ),
                 Menu.SEPARATOR,
                 MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
+                MenuItem(
+                    translator.t("tray.menu.open_logs"),
+                    self._on_open_logs,
+                    enabled=self._static_bool(self._open_logs_folder_callback is not None),
+                ),
                 MenuItem(quit_entry.text, self._on_quit),
             ]
         )
@@ -172,6 +179,14 @@ class TrayIconController:
 
     def _on_activate_infinite(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         self._service.activate(None, "infinite")
+
+    def _on_open_logs(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        if self._open_logs_folder_callback is None:
+            return
+        try:
+            self._open_logs_folder_callback()
+        except Exception:
+            LOGGER.exception("Failed to open Trayffeine logs folder")
 
     def _on_quit(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         self._service.quit()

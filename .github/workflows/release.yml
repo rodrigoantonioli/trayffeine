@@ -57,6 +57,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "${{ github.ref_name }}"
+          $isPrerelease = $tag -like "*-beta*"
           $files = Get-ChildItem -Path dist\installer -Filter *.exe | ForEach-Object { $_.FullName }
           if (-not $files) {
             throw "No installer artifact found in dist\installer"
@@ -71,4 +72,14 @@ jobs:
             exit 0
           }
 
-          gh release create $tag $files --title $tag --generate-notes
+          $createArgs = @("release", "create", $tag)
+          if ($isPrerelease) {
+            $createArgs += "--prerelease"
+          }
+          $createArgs += $files
+          $createArgs += @("--title", $tag, "--generate-notes")
+
+          gh @createArgs
+          if ($LASTEXITCODE -ne 0) {
+            throw "gh release create failed"
+          }
