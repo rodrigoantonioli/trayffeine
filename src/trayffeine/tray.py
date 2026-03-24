@@ -79,7 +79,7 @@ class TrayIconController:
         self._service.set_callbacks(
             on_state_change=self._handle_state_change,
             on_timer_finished=self._notify_timer_finished,
-            on_tick=self._request_refresh,
+            on_tick=self._request_tooltip_refresh,
         )
         self._images = {
             "active": self._load_image("trayffeine-active.png", fill="#9c5f2d"),
@@ -334,6 +334,9 @@ class TrayIconController:
     def _request_refresh(self) -> None:
         invoke_icon_callback(self._icon, self._refresh)
 
+    def _request_tooltip_refresh(self) -> None:
+        invoke_icon_callback(self._icon, self._refresh_tooltip)
+
     def _refresh(self) -> None:
         snapshot = self._service.snapshot()
         translator = self._translator()
@@ -342,6 +345,10 @@ class TrayIconController:
         self._icon.menu = self._build_menu()
         if self._icon.visible:
             self._icon.update_menu()
+
+    def _refresh_tooltip(self) -> None:
+        snapshot = self._service.snapshot()
+        self._icon.title = tooltip_text(snapshot.mode, snapshot.now, self._translator())
 
     def _notify_timer_finished(self) -> None:
         self._persist_settings()

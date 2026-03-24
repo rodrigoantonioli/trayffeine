@@ -92,6 +92,7 @@ class FakeIcon:
         self.menu = menu
         self.visible = False
         self.invocations = 0
+        self.menu_updates = 0
 
     def run(self, setup: object = None) -> None:
         if setup is not None:
@@ -102,7 +103,7 @@ class FakeIcon:
         callback()
 
     def update_menu(self) -> None:
-        return
+        self.menu_updates += 1
 
     def notify(self, message: str, title: str) -> None:
         self.notification = (title, message)
@@ -179,6 +180,25 @@ def test_tray_controller_clears_restore_flag_for_timed_mode(monkeypatch) -> None
     assert settings_store.saved[-1].restore_infinite is False
     assert settings_store.saved[-1].keepawake_method == "smart"
     assert controller._icon.title == "Trayffeine: active for 0s | 15m 00s left"
+
+
+def test_tray_tick_refresh_updates_only_tooltip(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    service = FakeService()
+    controller = tray_module.TrayIconController(service, system_locale="en")
+    controller._icon.visible = True
+
+    service.activate(timedelta(minutes=15), "15m")
+    controller._icon.menu_updates = 0
+    service.now += timedelta(seconds=5)
+
+    on_tick = service.callbacks.get("on_tick")
+    assert callable(on_tick)
+    on_tick()
+
+    assert controller._icon.title == "Trayffeine: active for 5s | 14m 55s left"
+    assert controller._icon.menu_updates == 0
 
 
 def test_double_click_toggles_any_active_mode_back_to_inactive(monkeypatch) -> None:

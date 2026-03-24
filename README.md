@@ -23,14 +23,14 @@ Development happens in WSL, but the official Windows build is produced in GitHub
 
 ## Latest Hotfix
 
-`0.7.2` fixes the support help dialog so `OK` and window close now work normally, and only one help dialog can be opened at a time. It also keeps explicit test coverage that timed-session expiration stops the keep-awake backend and returns the tray icon and tooltip to the inactive state.
+`0.7.3` keeps the live tooltip with elapsed and remaining time, but stops the heavy per-second tray redraw. The timed `tick` path now updates only the tooltip text, so the icon should no longer appear to blink every second while a session is active.
 
 ## Tray Menu UX
 
 The menu is intentionally split into stable sections:
 
 - top status rows
-  - `Trayffeine v0.7.2`
+  - `Trayffeine v0.7.3`
   - a stable summary such as `Inactive`, `Active until 14:32`, or `Infinite mode active`
 - primary actions
   - `Infinite mode`
@@ -177,7 +177,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.2 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.3 -Clean
 ```
 
 ## GitHub Actions
@@ -186,7 +186,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.
 - `Release`: runs only on tags matching `v*`
 - official releases are generated from the Windows workflow and uploaded as GitHub release assets
 - release publishing uses the `gh` CLI on the Windows runner
-- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.2` is a normal stable release
+- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.3` is a normal stable release
 
 ## Localization Notes
 
