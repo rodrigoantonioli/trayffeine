@@ -5,6 +5,7 @@ import sys
 from datetime import UTC, datetime, timedelta
 from types import ModuleType
 
+from trayffeine import __version__
 from trayffeine.i18n import LanguageSelection
 from trayffeine.service import ServiceSnapshot
 from trayffeine.session import SessionMode
@@ -122,7 +123,7 @@ def test_tray_controller_can_build_menu_with_localized_entries(monkeypatch) -> N
     assert controller._icon.title == "Trayffeine"
     assert controller._effective_locale() == "en"
     assert [item.text for item in controller._icon.menu.items[:3]] == [
-        "Trayffeine v0.3.0",
+        f"Trayffeine v{__version__}",
         "Elapsed: 0s",
         "Remaining: -",
     ]

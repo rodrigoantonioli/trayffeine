@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from trayffeine import __version__
 from trayffeine.i18n import LanguageSelection, Translator
 from trayffeine.presenter import (
     build_language_menu_entries,
@@ -24,7 +25,7 @@ def test_inactive_state_has_inactive_icon_and_disabled_off() -> None:
     assert icon_variant(SessionMode.off(), now) == "inactive"
     assert tooltip_text(SessionMode.off(), now, translator) == "Trayffeine: inativo"
     assert [entry.text for entry in status_entries] == [
-        "Trayffeine v0.3.0",
+        f"Trayffeine v{__version__}",
         "Tempo ativo: 0s",
         "Tempo restante: -",
     ]
@@ -43,7 +44,7 @@ def test_timed_state_marks_the_selected_preset() -> None:
     assert icon_variant(mode, now) == "active"
     assert tooltip_text(mode, now, translator) == "Trayffeine: active (15m 00s left)"
     assert [entry.text for entry in status_entries] == [
-        "Trayffeine v0.3.0",
+        f"Trayffeine v{__version__}",
         "Elapsed: 1m 00s",
         "Remaining: 14m 00s",
     ]
@@ -62,7 +63,7 @@ def test_infinite_state_marks_infinite_preset() -> None:
     assert next(entry for entry in entries if entry.key == "infinite").checked is True
     assert next(entry for entry in entries if entry.key == "infinite").text == "Infinito"
     assert [entry.text for entry in status_entries] == [
-        "Trayffeine v0.3.0",
+        f"Trayffeine v{__version__}",
         "Tiempo activo: 5s",
         "Tiempo restante: Infinito",
     ]

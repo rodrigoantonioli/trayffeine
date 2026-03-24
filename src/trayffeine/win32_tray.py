@@ -37,9 +37,6 @@ def create_icon(
                             self._on_double_click_callback()
                         return
 
-                    if lparam == pystray_win32.win32.WM_LBUTTONUP:
-                        return
-
                     super()._on_notify(wparam, lparam)
 
             return Win32DoubleClickIcon(
