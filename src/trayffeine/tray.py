@@ -20,7 +20,7 @@ from .presenter import (
 from .service import TrayffeineService
 from .session import PRESET_BY_KEY
 from .settings import SettingsStore, StoredSettings
-from .win32_tray import create_icon, invoke_icon_callback
+from .win32_tray import create_icon, invoke_icon_callback, post_icon_callback
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +65,7 @@ class TrayIconController:
             else detailed_logging_preference
         )
         self._detailed_logging_locked = detailed_logging_locked
+        self._clear_logs_flow_pending = False
         self._service.set_callbacks(
             on_state_change=self._handle_state_change,
             on_timer_finished=self._notify_timer_finished,
@@ -240,22 +241,11 @@ class TrayIconController:
             LOGGER.exception("Failed to open Trayffeine logs folder")
 
     def _on_clear_logs(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
-        if self._clear_logs_callback is None:
+        if self._clear_logs_callback is None or self._clear_logs_flow_pending:
             return
 
-        translator = self._translator()
-        if self._confirm_clear_logs_callback is not None:
-            confirmed = self._confirm_clear_logs_callback(
-                translator.t("tray.logs.clear.title"),
-                translator.t("tray.logs.clear.body"),
-            )
-            if not confirmed:
-                return
-
-        try:
-            self._clear_logs_callback()
-        except Exception:
-            LOGGER.exception("Failed to clear Trayffeine logs")
+        self._clear_logs_flow_pending = True
+        post_icon_callback(self._icon, self._run_clear_logs_flow)
 
     def _on_toggle_detailed_logging(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         if self._detailed_logging_locked:
@@ -306,6 +296,26 @@ class TrayIconController:
             self._icon.notify(message, title)
         except NotImplementedError:
             return
+
+    def _run_clear_logs_flow(self) -> None:
+        try:
+            translator = self._translator()
+            if self._confirm_clear_logs_callback is not None:
+                confirmed = self._confirm_clear_logs_callback(
+                    translator.t("tray.logs.clear.title"),
+                    translator.t("tray.logs.clear.body"),
+                )
+                if not confirmed:
+                    return
+
+            if self._clear_logs_callback is None:
+                return
+
+            self._clear_logs_callback()
+        except Exception:
+            LOGGER.exception("Failed to clear Trayffeine logs")
+        finally:
+            self._clear_logs_flow_pending = False
 
     def _toggle_infinite(self) -> None:
         snapshot = self._service.snapshot()

@@ -92,6 +92,7 @@ class FakeIcon:
         self.menu = menu
         self.visible = False
         self.invocations = 0
+        self.posted_callbacks: list[object] = []
 
     def run(self, setup: object = None) -> None:
         if setup is not None:
@@ -101,6 +102,9 @@ class FakeIcon:
         self.invocations += 1
         callback()
 
+    def post(self, callback) -> None:  # noqa: ANN001
+        self.posted_callbacks.append(callback)
+
     def update_menu(self) -> None:
         return
 
@@ -109,6 +113,11 @@ class FakeIcon:
 
     def stop(self) -> None:
         return
+
+    def run_posted(self) -> None:
+        while self.posted_callbacks:
+            callback = self.posted_callbacks.pop(0)
+            callback()
 
 
 def test_tray_controller_can_build_menu_with_grouped_entries(monkeypatch) -> None:
@@ -215,6 +224,7 @@ def test_tray_controller_exposes_clear_logs_action_with_confirmation(monkeypatch
     support_menu = _submenu(controller._icon.menu, "Support")
     clear_logs_item = _menu_item(support_menu, "Clear Logs")
     clear_logs_item.action(None, None)
+    controller._icon.run_posted()
 
     assert confirmations == [
         (
@@ -305,8 +315,31 @@ def test_tray_controller_does_not_clear_logs_when_confirmation_is_canceled(monke
     support_menu = _submenu(controller._icon.menu, "Support")
     clear_logs_item = _menu_item(support_menu, "Clear Logs")
     clear_logs_item.action(None, None)
+    controller._icon.run_posted()
 
     assert cleared == []
+
+
+def test_tray_controller_deduplicates_pending_clear_logs_dialogs(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    cleared: list[str] = []
+    confirmations: list[tuple[str, str]] = []
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        clear_logs=lambda: cleared.append("cleared"),
+        confirm_clear_logs=lambda title, body: confirmations.append((title, body)) or True,
+    )
+
+    support_menu = _submenu(controller._icon.menu, "Support")
+    clear_logs_item = _menu_item(support_menu, "Clear Logs")
+    clear_logs_item.action(None, None)
+    clear_logs_item.action(None, None)
+    controller._icon.run_posted()
+
+    assert len(confirmations) == 1
+    assert cleared == ["cleared"]
 
 
 def _load_tray_module(monkeypatch):

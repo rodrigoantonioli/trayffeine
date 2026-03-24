@@ -137,3 +137,52 @@ def test_win32_icon_invoke_posts_back_to_icon_thread(monkeypatch) -> None:
     icon._on_invoke(0, 0)
 
     assert calls == ["ran"]
+
+
+def test_win32_icon_post_always_queues_when_running(monkeypatch) -> None:
+    fake_pystray = ModuleType("pystray")
+    fake_pystray.__path__ = []
+    fake_pystray.Icon = FakeBaseIcon
+    fake_win32_module = ModuleType("pystray._win32")
+    fake_win32_module.Icon = FakeBaseIcon
+    posted_messages: list[tuple[int, int, int, int]] = []
+
+    fake_win32_module.win32 = SimpleNamespace(
+        WM_LBUTTONDBLCLK=515,
+        WM_LBUTTONUP=514,
+        WM_RBUTTONUP=517,
+        RegisterClassEx=lambda window_class: 1,
+        WNDCLASSEX=FakeWNDCLASSEX,
+        GetModuleHandle=lambda _: 1,
+        COLOR_WINDOW=5,
+        PostMessage=lambda hwnd, msg, wparam, lparam: posted_messages.append(
+            (hwnd, msg, wparam, lparam)
+        ),
+    )
+    fake_win32_module._dispatcher = None
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "pystray", fake_pystray)
+    monkeypatch.setitem(sys.modules, "pystray._win32", fake_win32_module)
+    sys.modules.pop("trayffeine.win32_tray", None)
+
+    module = importlib.import_module("trayffeine.win32_tray")
+    icon = module.create_icon(
+        name="trayffeine",
+        title="Trayffeine",
+        icon=object(),
+        menu=object(),
+    )
+    icon._running = True
+    icon._hwnd = 77
+    icon._thread = None
+    calls: list[str] = []
+
+    icon.post(lambda: calls.append("ran"))
+
+    assert posted_messages == [(77, WM_TRAYFFEINE_INVOKE, 0, 0)]
+    assert calls == []
+
+    icon._on_invoke(0, 0)
+
+    assert calls == ["ran"]
