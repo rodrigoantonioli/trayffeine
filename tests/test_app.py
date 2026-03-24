@@ -272,3 +272,31 @@ def test_clear_logs_recreates_a_fresh_log_file(monkeypatch, tmp_path) -> None:
             handler.close()
         root.handlers = previous_handlers
         root.setLevel(previous_level)
+
+
+def test_clear_logs_restores_logging_even_when_file_cleanup_fails(monkeypatch, tmp_path) -> None:
+    import trayffeine.app_logging
+
+    log_path = tmp_path / "Trayffeine" / "logs" / "trayffeine.log"
+    calls: list[tuple[str, object]] = []
+
+    monkeypatch.setattr(
+        trayffeine.app_logging,
+        "clear_log_files",
+        lambda path: calls.append(("clear", path))
+        or (_ for _ in ()).throw(PermissionError("locked")),
+    )
+    monkeypatch.setattr(
+        trayffeine.app_logging,
+        "set_runtime_log_level",
+        lambda level, *, log_path=None: calls.append(("restore", level, log_path)),
+    )
+    logging.getLogger().setLevel(logging.INFO)
+
+    with pytest.raises(PermissionError):
+        _clear_logs(log_path)
+
+    assert calls == [
+        ("clear", log_path),
+        ("restore", logging.INFO, log_path),
+    ]

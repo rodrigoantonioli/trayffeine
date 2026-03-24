@@ -124,8 +124,10 @@ def _clear_logs(log_path: Path) -> None:
     from .app_logging import clear_log_files, set_runtime_log_level
 
     current_level = logging.getLogger().level
-    clear_log_files(log_path)
-    set_runtime_log_level(current_level, log_path=log_path)
+    try:
+        clear_log_files(log_path)
+    finally:
+        set_runtime_log_level(current_level, log_path=log_path)
     LOGGER.info("Logs cleared from tray menu")
 
 
