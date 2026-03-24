@@ -29,7 +29,7 @@ Current product behavior:
 ## Environment Model
 
 - Development and editing happen in WSL.
-- Official Windows artifacts are built in GitHub Actions on `windows-latest`.
+- Official Windows installers are built in GitHub Actions on `windows-latest`.
 - Do not treat WSL as the place to produce final Windows distributables for users.
 - Python target is `3.12`.
 
@@ -213,7 +213,7 @@ When changing logging:
 - The installer always creates a current-user Start Menu shortcut.
 - The installer is unsigned.
 - Installer changes belong in `packaging/windows/Trayffeine.iss`.
-- Keep the release workflow Windows-only for artifact generation.
+- Keep the release workflow Windows-only for installer generation.
 
 ## Testing Expectations
 
@@ -252,7 +252,7 @@ GitHub workflows:
 If changing packaging or release behavior, verify:
 
 - tag pushes do not trigger redundant CI runs
-- the Windows workflow still uploads the installer artifact
+- the Windows workflow still publishes the installer to the GitHub release
 - the release workflow still publishes through `gh`
 
 ## Known Constraints

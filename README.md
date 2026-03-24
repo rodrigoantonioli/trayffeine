@@ -2,7 +2,7 @@
 
 Trayffeine is a small Windows tray application that keeps the computer awake while a session is active. It is inspired by tools such as Caffeine, but focuses on a native tray workflow, configurable keep-awake methods, persistent preferences, and a simple installer pipeline.
 
-Development happens in WSL, but official Windows artifacts are produced in GitHub Actions on `windows-latest`.
+Development happens in WSL, but official Windows installers are produced in GitHub Actions on `windows-latest`.
 
 ## Version 1.0.0
 

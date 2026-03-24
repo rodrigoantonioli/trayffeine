@@ -45,12 +45,6 @@ jobs:
         run: |
           powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version "${{ github.ref_name }}" -Clean
 
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: trayffeine-installer
-          path: dist/installer/*.exe
-
       - name: Publish release assets
         shell: powershell
         env:
