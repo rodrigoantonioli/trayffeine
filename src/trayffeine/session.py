@@ -32,6 +32,7 @@ PRESET_BY_KEY = {preset.key: preset for preset in PRESETS}
 @dataclass(frozen=True)
 class SessionMode:
     kind: str
+    started_at: datetime | None = None
     ends_at: datetime | None = None
     preset_key: str | None = None
 
@@ -40,12 +41,12 @@ class SessionMode:
         return cls(kind="off")
 
     @classmethod
-    def infinite(cls) -> Self:
-        return cls(kind="infinite", preset_key="infinite")
+    def infinite(cls, started_at: datetime) -> Self:
+        return cls(kind="infinite", started_at=started_at, preset_key="infinite")
 
     @classmethod
-    def timed(cls, ends_at: datetime, preset_key: str) -> Self:
-        return cls(kind="timed", ends_at=ends_at, preset_key=preset_key)
+    def timed(cls, started_at: datetime, ends_at: datetime, preset_key: str) -> Self:
+        return cls(kind="timed", started_at=started_at, ends_at=ends_at, preset_key=preset_key)
 
     def is_active(self, now: datetime | None = None) -> bool:
         if self.kind == "infinite":
@@ -62,6 +63,11 @@ class SessionMode:
             return timedelta(0)
         return max(timedelta(0), self.ends_at - now)
 
+    def elapsed(self, now: datetime) -> timedelta:
+        if not self.is_active(now) or self.started_at is None:
+            return timedelta(0)
+        return max(timedelta(0), now - self.started_at)
+
 
 class SessionState:
     def __init__(self, now_fn: Callable[[], datetime] = utc_now) -> None:
@@ -75,9 +81,9 @@ class SessionState:
     def activate(self, duration: timedelta | None, preset_key: str) -> SessionMode:
         now = self._now_fn()
         if duration is None:
-            self._mode = SessionMode.infinite()
+            self._mode = SessionMode.infinite(now)
         else:
-            self._mode = SessionMode.timed(now + duration, preset_key)
+            self._mode = SessionMode.timed(now, now + duration, preset_key)
         return self._mode
 
     def deactivate(self) -> SessionMode:

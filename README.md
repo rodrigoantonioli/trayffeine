@@ -7,21 +7,26 @@ It is developed from WSL, but the official Windows build is produced in GitHub A
 ## Current Status
 
 - Windows tray app with no main window
+- Tray menu shows app name/version plus live `Elapsed` and `Remaining` status rows
 - Presets for `15 min`, `30 min`, `1 h`, `2 h`, and `Infinite`
 - Automatic shutdown when a timed session expires
 - Toast notification only when the timer ends
 - Single-instance guard on Windows
 - Runtime localization with `Auto`, `pt-BR`, `en`, and `es`
-- In-memory language override from the tray menu, with fallback to English
+- Persistent language selection from the tray menu, with fallback to English
+- Infinite mode can be restored on the next launch, while timed sessions still start inactive
+- Double-clicking the tray icon toggles infinite mode on and off
 
 ## Project Layout
 
 - `src/trayffeine/app.py`: runtime bootstrap and single-instance startup flow
-- `src/trayffeine/tray.py`: tray icon, menu, language switching, notifications
-- `src/trayffeine/service.py`: background worker that drives keep-awake timing
+- `src/trayffeine/tray.py`: tray icon, menu, language switching, double-click handling, notifications
+- `src/trayffeine/service.py`: background worker that drives keep-awake timing and live status refresh
 - `src/trayffeine/session.py`: session state and stable preset keys
-- `src/trayffeine/presenter.py`: presentation helpers for menu, tooltip, notifications
+- `src/trayffeine/presenter.py`: presentation helpers for menu, tooltip, live status, and notifications
 - `src/trayffeine/i18n.py`: locale detection, catalogs, translation helpers
+- `src/trayffeine/settings.py`: persisted settings storage for language selection and infinite restore
+- `src/trayffeine/win32_tray.py`: Windows-specific tray icon wrapper for real double-click handling
 - `tests/`: unit and smoke-style tests for session, i18n, presenter, tray bootstrap
 - `packaging/windows/`: PyInstaller spec, build script, and Inno Setup installer script
 
@@ -66,7 +71,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.2.0 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.3.0 -Clean
 ```
 
 ## GitHub Actions
@@ -74,13 +79,16 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.
 - `CI`: runs on pushes to `main` and on pull requests
 - `Release`: runs only on tags matching `v*`
 - Official releases are generated from the Windows workflow and uploaded as GitHub release assets
+- Release publishing uses the `gh` CLI on the Windows runner, which avoids the old Node 20 release action warning
 
 ## Localization Notes
 
 - English is the source and fallback language in code
 - Supported locales: `en`, `pt-BR`, `es`
 - Locale is auto-detected at startup
-- Manual selection in the tray menu does not persist across launches
+- Manual selection in the tray menu persists across launches
+- `Auto` keeps following the system locale
+- Timed sessions still start inactive on relaunch; only infinite mode is restored
 - Installer localization is not part of the runtime i18n layer
 
 ## Validation
@@ -94,4 +102,3 @@ pytest
 ```
 
 Tray behavior itself must still be verified interactively on Windows because `pystray` runtime behavior is only partially covered by unit tests.
-

@@ -5,9 +5,6 @@ on:
     tags:
       - "v*"
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -55,6 +52,23 @@ jobs:
           path: dist/installer/*.exe
 
       - name: Publish release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/installer/*.exe
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $files = Get-ChildItem -Path dist\installer -Filter *.exe | ForEach-Object { $_.FullName }
+          if (-not $files) {
+            throw "No installer artifact found in dist\installer"
+          }
+
+          gh release view $tag | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $files --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw "gh release upload failed"
+            }
+            exit 0
+          }
+
+          gh release create $tag $files --title $tag --generate-notes
