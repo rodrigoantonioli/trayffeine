@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import ctypes
 import sys
 from collections.abc import Callable
 from typing import Any
+
+CS_DBLCLKS = 0x0008
 
 
 def create_icon(
@@ -38,6 +41,22 @@ def create_icon(
                         return
 
                     super()._on_notify(wparam, lparam)
+
+                def _register_class(self) -> int:
+                    return pystray_win32.win32.RegisterClassEx(pystray_win32.win32.WNDCLASSEX(
+                        cbSize=ctypes.sizeof(pystray_win32.win32.WNDCLASSEX),
+                        style=CS_DBLCLKS,
+                        lpfnWndProc=pystray_win32._dispatcher,
+                        cbClsExtra=0,
+                        cbWndExtra=0,
+                        hInstance=pystray_win32.win32.GetModuleHandle(None),
+                        hIcon=None,
+                        hCursor=None,
+                        hbrBackground=pystray_win32.win32.COLOR_WINDOW + 1,
+                        lpszMenuName=None,
+                        lpszClassName=f"{self.name}{id(self)}SystemTrayIcon",
+                        hIconSm=None,
+                    ))
 
             return Win32DoubleClickIcon(
                 name=name,
