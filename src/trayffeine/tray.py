@@ -20,7 +20,7 @@ from .presenter import (
 from .service import TrayffeineService
 from .session import PRESET_BY_KEY
 from .settings import SettingsStore, StoredSettings
-from .win32_tray import create_icon
+from .win32_tray import create_icon, invoke_icon_callback
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class TrayIconController:
         self._service.set_callbacks(
             on_state_change=self._handle_state_change,
             on_timer_finished=self._notify_timer_finished,
-            on_tick=self._refresh,
+            on_tick=self._request_refresh,
         )
         self._images = {
             "active": self._load_image("trayffeine-active.png", fill="#9c5f2d"),
@@ -71,7 +71,7 @@ class TrayIconController:
 
     def _setup(self, icon: Icon) -> None:
         icon.visible = True
-        self._refresh()
+        self._request_refresh()
 
     def _build_menu(self) -> Menu:
         _, Menu, MenuItem = _pystray_types()
@@ -148,7 +148,7 @@ class TrayIconController:
             else:
                 self._language_selection = LanguageSelection.explicit(selection_key)
             self._persist_settings()
-            self._refresh()
+            self._request_refresh()
 
         return handler
 
@@ -161,7 +161,10 @@ class TrayIconController:
 
     def _handle_state_change(self) -> None:
         self._persist_settings()
-        self._refresh()
+        self._request_refresh()
+
+    def _request_refresh(self) -> None:
+        invoke_icon_callback(self._icon, self._refresh)
 
     def _refresh(self) -> None:
         snapshot = self._service.snapshot()
@@ -174,6 +177,9 @@ class TrayIconController:
 
     def _notify_timer_finished(self) -> None:
         self._persist_settings()
+        invoke_icon_callback(self._icon, self._show_timer_finished_notification)
+
+    def _show_timer_finished_notification(self) -> None:
         self._refresh()
         title, message = timer_finished_notification(self._translator())
         try:

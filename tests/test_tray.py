@@ -91,10 +91,15 @@ class FakeIcon:
         self.icon = icon
         self.menu = menu
         self.visible = False
+        self.invocations = 0
 
     def run(self, setup: object = None) -> None:
         if setup is not None:
             setup(self)
+
+    def invoke(self, callback) -> None:  # noqa: ANN001
+        self.invocations += 1
+        callback()
 
     def update_menu(self) -> None:
         return
