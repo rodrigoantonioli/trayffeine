@@ -1,0 +1,16 @@
+{
+  "packageIdentifier": "RodrigoAntonioli.Trayffeine",
+  "packageVersion": "1.0.0",
+  "publisher": "Rodrigo Antonioli",
+  "publisherUrl": "https://github.com/rodrigoantonioli",
+  "publisherSupportUrl": "https://github.com/rodrigoantonioli/trayffeine/issues",
+  "packageName": "Trayffeine",
+  "packageUrl": "https://github.com/rodrigoantonioli/trayffeine",
+  "license": "MIT",
+  "licenseUrl": "https://github.com/rodrigoantonioli/trayffeine/blob/main/LICENSE",
+  "moniker": "trayffeine",
+  "shortDescription": "Windows tray app that keeps your PC awake.",
+  "installerType": "inno",
+  "installerUrl": "https://github.com/rodrigoantonioli/trayffeine/releases/download/v1.0.0/Trayffeine-Setup-1.0.0.exe",
+  "installerSha256": "a72a6110f987a3967b19e36a8bcfaf1f86754f615d8e6d32735fd8d63e81994f"
+}
