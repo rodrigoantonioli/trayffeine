@@ -170,7 +170,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.4.0`.
+- Project version is currently `0.4.1`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`

@@ -113,5 +113,5 @@ def test_menu_summary_uses_end_time_for_timed_mode() -> None:
     mode = SessionMode.timed(now, now + timedelta(minutes=30), preset_key="30m")
 
     assert menu_summary_text(mode, now, translator) == (
-        f"Ativo ate {format_clock(now + timedelta(minutes=30))}"
+        f"Ativo até {format_clock(now + timedelta(minutes=30))}"
     )
