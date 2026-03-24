@@ -8,6 +8,10 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -22,6 +26,8 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "pyproject.toml"
 
       - name: Install Inno Setup
         shell: powershell
