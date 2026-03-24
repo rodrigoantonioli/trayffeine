@@ -15,17 +15,18 @@ def utc_now() -> datetime:
 @dataclass(frozen=True)
 class DurationPreset:
     key: str
-    label: str
     duration: timedelta | None
 
 
 PRESETS = (
-    DurationPreset(key="15m", label="15 min", duration=timedelta(minutes=15)),
-    DurationPreset(key="30m", label="30 min", duration=timedelta(minutes=30)),
-    DurationPreset(key="1h", label="1 h", duration=timedelta(hours=1)),
-    DurationPreset(key="2h", label="2 h", duration=timedelta(hours=2)),
-    DurationPreset(key="infinite", label="Infinito", duration=None),
+    DurationPreset(key="15m", duration=timedelta(minutes=15)),
+    DurationPreset(key="30m", duration=timedelta(minutes=30)),
+    DurationPreset(key="1h", duration=timedelta(hours=1)),
+    DurationPreset(key="2h", duration=timedelta(hours=2)),
+    DurationPreset(key="infinite", duration=None),
 )
+
+PRESET_BY_KEY = {preset.key: preset for preset in PRESETS}
 
 
 @dataclass(frozen=True)
@@ -103,4 +104,3 @@ def next_keepawake_at(
     if due_at <= now:
         return now
     return due_at
-

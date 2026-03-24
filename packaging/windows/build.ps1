@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.0",
+    [string]$Version = "0.2.0",
     [switch]$Clean
 )
 
@@ -32,4 +32,3 @@ New-Item -ItemType Directory -Force -Path $InstallerOutput | Out-Null
 
 $ISCC = (Get-Command iscc.exe -ErrorAction Stop).Path
 & $ISCC "/DAppVersion=$NormalizedVersion" "/DSourceRoot=$Root" "/DOutputDir=$InstallerOutput" $InstallerScript
-
