@@ -66,8 +66,8 @@ def _run_app(
     from .tray import TrayIconController
     from .windows import (
         SingleInstanceGuard,
-        WindowsInputBackend,
         confirm_message_box,
+        create_keepawake_backend,
         open_path_in_shell,
     )
 
@@ -75,13 +75,14 @@ def _run_app(
     if not guard.acquired:
         return
 
-    service = TrayffeineService(backend=WindowsInputBackend())
+    service = TrayffeineService(backend=create_keepawake_backend(settings.keepawake_method))
     if settings.restore_infinite:
         service.activate(None, "infinite")
     tray = TrayIconController(
         service,
         system_locale=detect_system_locale(),
         initial_language_selection=settings.language_selection,
+        initial_keepawake_method=settings.keepawake_method,
         settings_store=settings_store,
         open_logs_folder=lambda: _open_logs_folder(log_path, open_path_in_shell),
         clear_logs=lambda: _clear_logs(log_path),
@@ -89,6 +90,7 @@ def _run_app(
         set_detailed_logging_enabled=lambda enabled: _set_detailed_logging_enabled(
             log_path, enabled
         ),
+        set_keepawake_method=lambda method: _set_keepawake_method(service, method),
         detailed_logging_enabled=detailed_logging_enabled,
         detailed_logging_preference=settings.detailed_logging_enabled,
         detailed_logging_locked=detailed_logging_locked,
@@ -118,6 +120,12 @@ def _set_detailed_logging_enabled(log_path: Path, enabled: bool) -> None:
 
     LOGGER.info("Detailed logging disabled from tray menu")
     set_runtime_log_level(target_level, log_path=log_path)
+
+
+def _set_keepawake_method(service, method) -> None:  # noqa: ANN001
+    from .windows import create_keepawake_backend
+
+    service.set_backend(create_keepawake_backend(method))
 
 
 def _clear_logs(log_path: Path) -> None:

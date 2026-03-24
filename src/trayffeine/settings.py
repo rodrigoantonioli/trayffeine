@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .i18n import FALLBACK_LOCALE, SUPPORTED_LOCALES, LanguageSelection, LocaleCode
+from .keepawake import DEFAULT_KEEPAWAKE_METHOD, KeepAwakeMethod, coerce_keepawake_method
 
 LOGGER = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class StoredSettings:
     language_selection: LanguageSelection
     restore_infinite: bool = False
     detailed_logging_enabled: bool = False
+    keepawake_method: KeepAwakeMethod = DEFAULT_KEEPAWAKE_METHOD
 
 
 class SettingsStore:
@@ -60,6 +62,7 @@ def _serialize_settings(settings: StoredSettings) -> dict[str, object]:
         },
         "restore_infinite": settings.restore_infinite,
         "detailed_logging_enabled": settings.detailed_logging_enabled,
+        "keepawake_method": settings.keepawake_method,
     }
 
 
@@ -69,12 +72,14 @@ def _deserialize_settings(payload: object) -> StoredSettings:
 
     restore_infinite = bool(payload.get("restore_infinite", False))
     detailed_logging_enabled = bool(payload.get("detailed_logging_enabled", False))
+    keepawake_method = coerce_keepawake_method(payload.get("keepawake_method"))
     raw_language = payload.get("language_selection")
     language_selection = _deserialize_language_selection(raw_language)
     return StoredSettings(
         language_selection=language_selection,
         restore_infinite=restore_infinite,
         detailed_logging_enabled=detailed_logging_enabled,
+        keepawake_method=keepawake_method,
     )
 
 

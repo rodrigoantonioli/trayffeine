@@ -28,6 +28,7 @@ class FakeSettingsStore:
         self._settings = settings or StoredSettings(
             language_selection=LanguageSelection.explicit("es"),
             restore_infinite=True,
+            keepawake_method="shift",
         )
 
     def load(self) -> StoredSettings:
@@ -71,7 +72,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     created: dict[str, object] = {}
     fake_windows = ModuleType("trayffeine.windows")
     fake_windows.SingleInstanceGuard = FakeGuard
-    fake_windows.WindowsInputBackend = object
+    fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
 
@@ -94,6 +95,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
                 language_selection=LanguageSelection.explicit("es"),
                 restore_infinite=True,
                 detailed_logging_enabled=True,
+                keepawake_method="shift",
             )
         ),
     )
@@ -118,13 +120,16 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     tray = created["tray"]
 
     assert service.activations == [(None, "infinite")]
+    assert service.backend == "backend:shift"
     assert tray.kwargs["initial_language_selection"] == LanguageSelection.explicit("es")
+    assert tray.kwargs["initial_keepawake_method"] == "shift"
     assert callable(tray.kwargs["open_logs_folder"])
     assert tray.kwargs["detailed_logging_enabled"] is True
     assert tray.kwargs["detailed_logging_preference"] is True
     assert tray.kwargs["detailed_logging_locked"] is False
     assert callable(tray.kwargs["clear_logs"])
     assert callable(tray.kwargs["set_detailed_logging_enabled"])
+    assert callable(tray.kwargs["set_keepawake_method"])
 
 
 def test_run_app_logs_and_shows_dialog_on_unhandled_exception(monkeypatch, tmp_path) -> None:
@@ -139,7 +144,7 @@ def test_run_app_logs_and_shows_dialog_on_unhandled_exception(monkeypatch, tmp_p
     log_path = tmp_path / "logs" / "trayffeine.log"
     fake_windows = ModuleType("trayffeine.windows")
     fake_windows.SingleInstanceGuard = FakeGuard
-    fake_windows.WindowsInputBackend = object
+    fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.show_message_box = lambda title, message: dialog_calls.append((title, message))
     fake_windows.open_path_in_shell = lambda path: None
@@ -195,7 +200,7 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
     created: dict[str, object] = {}
     fake_windows = ModuleType("trayffeine.windows")
     fake_windows.SingleInstanceGuard = FakeGuard
-    fake_windows.WindowsInputBackend = object
+    fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
 
@@ -219,6 +224,7 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
                 language_selection=LanguageSelection.auto(),
                 restore_infinite=False,
                 detailed_logging_enabled=False,
+                keepawake_method="execution-state",
             )
         ),
     )
@@ -240,6 +246,7 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
     run_app()
 
     tray = created["tray"]
+    assert created["service"].backend == "backend:execution-state"
     assert tray.kwargs["detailed_logging_enabled"] is True
     assert tray.kwargs["detailed_logging_preference"] is False
     assert tray.kwargs["detailed_logging_locked"] is True

@@ -151,6 +151,7 @@ def test_tray_controller_persists_language_infinite_and_logging_settings(monkeyp
         language_selection=LanguageSelection.explicit("es"),
         restore_infinite=True,
         detailed_logging_enabled=True,
+        keepawake_method="smart",
     )
 
 
@@ -168,6 +169,7 @@ def test_tray_controller_clears_restore_flag_for_timed_mode(monkeypatch) -> None
     service.activate(timedelta(minutes=15), "15m")
 
     assert settings_store.saved[-1].restore_infinite is False
+    assert settings_store.saved[-1].keepawake_method == "smart"
     assert controller._icon.title == "Trayffeine: active for 0s | 15m 00s left"
 
 
@@ -248,6 +250,33 @@ def test_tray_controller_exposes_detailed_logging_toggle(monkeypatch) -> None:
     assert settings_store.saved[-1].detailed_logging_enabled is True
     refreshed_item = _menu_item(_submenu(controller._icon.menu, "Preferences"), "Detailed logging")
     assert _resolve_menu_flag(refreshed_item.checked, refreshed_item) is True
+
+
+def test_tray_controller_exposes_keepawake_method_menu(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    selected: list[str] = []
+    settings_store = FakeSettingsStore()
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        settings_store=settings_store,
+        initial_keepawake_method="execution-state",
+        set_keepawake_method=lambda method: selected.append(method),
+    )
+
+    preferences_menu = _submenu(controller._icon.menu, "Preferences")
+    keepawake_menu = _submenu(preferences_menu, "Keep-awake method")
+    api_item = _menu_item(keepawake_menu, "Windows API")
+    shift_item = _menu_item(keepawake_menu, "Shift")
+
+    assert _resolve_menu_flag(api_item.checked, api_item) is True
+
+    shift_item.action(None, None)
+
+    assert selected == ["shift"]
+    assert controller._keepawake_method == "shift"
+    assert settings_store.saved[-1].keepawake_method == "shift"
 
 
 def test_tray_controller_disables_detailed_logging_toggle_when_locked(monkeypatch) -> None:
