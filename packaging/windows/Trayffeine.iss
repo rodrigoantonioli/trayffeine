@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.7.3"
+  #define AppVersion "1.0.0"
 #endif
 
 #ifndef SourceRoot
@@ -44,14 +44,11 @@ SetupLogging=yes
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
-[Tasks]
-Name: "startmenu"; Description: "Criar atalho no menu Iniciar"; Flags: checkedonce
-
 [Files]
 Source: "{#SourceRoot}\dist\Trayffeine\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startmenu
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Executar {#MyAppName}"; Flags: nowait postinstall skipifsilent

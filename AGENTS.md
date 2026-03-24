@@ -1,37 +1,36 @@
 # AGENTS.md
 
-This file is for coding agents working in this repository. It explains the current architecture, operational constraints, and expected workflow so another agent can continue work without rediscovering the project.
+This file is for coding agents working in this repository. It explains the current product behavior, repository structure, architecture rules, and release workflow so another agent can continue work without rediscovering context.
 
 ## Product Summary
 
-Trayffeine is a small Windows system tray application that keeps the machine awake while a session is active.
+Trayffeine is a Windows system tray application that keeps the machine awake while a session is active.
 
-Primary product behavior:
+Current product behavior:
 
 - no main window
-- tray icon with active/inactive states and a pressed-looking active variant
+- active and inactive tray icons, including a pressed-looking active state
 - presets: `15m`, `30m`, `1h`, `2h`, `infinite`
-- tray menu shows stable summary rows while the live counter stays in the tooltip
-- timer expiration returns the app to inactive mode
+- timed sessions automatically return the app to inactive mode
 - one notification when a timed session ends
+- tray tooltip shows live elapsed and remaining time
+- double-click on the tray icon toggles infinite mode
 - single-instance guard on Windows
 - runtime localization for `pt-BR`, `en`, and `es`
 - persistent language selection
 - persistent keep-awake method selection
 - supported keep-awake methods: `smart`, `execution-state`, `f15`, `shift`
-- infinite mode can be restored on relaunch, but timed sessions always start inactive
-- double-click on the tray icon toggles infinite mode
-- grouped tray menu with `Preferences` and `Support`
 - persistent detailed logging toggle
-- first launch defaults to infinite mode with detailed logging enabled until a settings file exists
-- support actions to show help, open logs, or clear logs
-- unhandled exceptions are logged and surfaced in a Windows error dialog
+- support actions for help, opening logs, and clearing logs
+- persistent restore of infinite mode, while timed sessions always restart inactive
+- first launch defaults to infinite restore plus detailed logging enabled
+- per-user installer that always creates a Start Menu shortcut
 
 ## Environment Model
 
 - Development and editing happen in WSL.
 - Official Windows artifacts are built in GitHub Actions on `windows-latest`.
-- Do not treat WSL as a reliable place to produce final `.exe` files for Windows distribution.
+- Do not treat WSL as the place to produce final Windows distributables for users.
 - Python target is `3.12`.
 
 Recommended local loop:
@@ -45,147 +44,136 @@ ruff check .
 pytest
 ```
 
-For real tray validation, run the app from Windows in a real Windows path.
+For real tray validation, run the app from a real Windows path.
 
 ## Repository Map
 
 - `src/trayffeine/app.py`
   - runtime bootstrap
-  - loads persisted settings before final log-level selection
-  - applies env-override vs persisted detailed-logging preference
-  - acquires the Windows single-instance mutex
-  - wires service, tray callbacks, keep-awake method changes, help/support actions, and crash boundary
+  - settings load
+  - effective log-level selection
+  - single-instance guard
+  - crash boundary
+  - tray/service wiring
 
 - `src/trayffeine/app_logging.py`
-  - rotating file logger configuration
-  - log-level resolution
-  - env override detection
-  - runtime log-level switching without duplicating handlers
-  - log-file cleanup helpers
+  - rotating log configuration
+  - env override handling
+  - runtime log-level switching
+  - log cleanup helpers
 
 - `src/trayffeine/service.py`
   - background worker loop
-  - owns keep-awake scheduling, backend lifecycle, timer expiration, and live UI refresh cadence
-  - backend lifecycle and keep-awake pulses must stay on the worker thread so `SetThreadExecutionState` is started, refreshed, and cleared on the same thread
-  - state changes are surfaced through callbacks
+  - keep-awake cadence
+  - backend lifecycle
+  - timer expiration
+  - callback dispatch for state changes, timer completion, and tooltip ticks
+
+- `src/trayffeine/session.py`
+  - pure session state and timing math
+  - stable preset keys only
 
 - `src/trayffeine/keepawake.py`
   - stable keep-awake method ids
   - coercion helper for persisted settings
 
-- `src/trayffeine/session.py`
-  - pure session state
-  - stable preset keys and durations only
-  - no localized labels should live here
-
 - `src/trayffeine/presenter.py`
-  - presentation-only logic
-  - owns tooltip text, stable menu summary text, timer-finished notification payload, and language menu entries
-  - this is the right place for text assembly, not `service.py` or `session.py`
+  - tray summaries
+  - tooltip text
+  - notification payloads
+  - presentation-only text assembly
 
 - `src/trayffeine/i18n.py`
   - locale detection and normalization
-  - translation catalogs
-  - language selection model (`auto` vs explicit locale)
-  - English is the fallback/source language
+  - runtime catalogs
+  - language selection model
 
 - `src/trayffeine/tray.py`
   - pystray integration
-  - grouped menu rebuilding
-  - persistent language and detailed-logging preferences
-  - double-click toggle handling
-  - icon refresh and notification dispatch
-  - support actions for help, detailed logging, opening logs, and clearing logs
+  - grouped menu construction
+  - support actions
+  - tooltip refresh and icon/menu refresh behavior
+  - notification dispatch
 
 - `src/trayffeine/settings.py`
-  - persisted settings storage
-  - stores language selection, infinite-mode restore flag, detailed-logging preference, and keep-awake method
-  - missing settings file is treated as first launch and defaults to infinite restore plus detailed logging enabled
+  - JSON settings persistence
+  - stores language, infinite restore, detailed logging, and keep-awake method
+  - missing settings file is treated as first launch
 
 - `src/trayffeine/win32_tray.py`
-  - Windows-specific tray icon wrapper
-  - intercepts tray icon double-click without changing right-click menu behavior
+  - Windows-specific tray wrapper
+  - intercepts tray double-click without breaking right-click behavior
 
 - `src/trayffeine/windows.py`
-  - Windows-specific backend only
-  - keyboard backends for `F15` and `Shift`
+  - Windows keep-awake backends
+  - `SendInput` keyboard backends for `F15` and `Shift`
   - `SetThreadExecutionState` backend
-  - smart fallback backend: `execution-state -> f15 -> shift`
-  - named mutex handling
-  - message-box helper
-  - confirmation-dialog helper
-  - shell-open helper for logs
+  - smart fallback backend
+  - mutex
+  - dialogs
+  - shell-open helper
 
 - `packaging/windows/`
   - `trayffeine.spec`: PyInstaller bundle definition
-  - `build.ps1`: manual Windows packaging entrypoint
+  - `build.ps1`: manual packaging entrypoint
   - `Trayffeine.iss`: Inno Setup installer script
 
-## Current Architecture Rules
+- `tests/`
+  - unit and smoke-style coverage for session, presenter, i18n, logging, tray wiring, service behavior, and Windows integration helpers
+
+- `CHANGELOG.md`
+  - milestone summary from the start of the project through `1.0.0`
+
+## Architecture Rules
 
 - Keep state and presentation separate.
-  - `session.py` should contain stable keys and time math.
-  - localized strings belong in `i18n.py` and `presenter.py`.
+  - `session.py` owns keys and time math.
+  - localized text belongs in `i18n.py` and `presenter.py`.
 
 - Do not hardcode user-facing runtime text in `tray.py` or `app.py`.
-  - tray labels, confirmation text, tooltip text, and notifications should go through the translator.
+  - tray labels, dialogs, tooltips, and notifications should go through the translator.
 
 - Preserve stable preset keys.
   - `15m`, `30m`, `1h`, `2h`, `infinite`
-  - these keys are internal contracts and should not be translated
+  - these are internal contracts and should not be translated
 
-- English is the default fallback language.
-  - if locale resolution fails or a translation key is missing, the code should still produce English text
+- Preserve stable keep-awake method ids.
+  - `smart`, `execution-state`, `f15`, `shift`
 
-- Manual language selection persists across launches.
-  - `Auto` still follows the system locale
-  - timed sessions still start inactive on relaunch
+- Keep backend lifecycle on the worker thread.
+  - `SetThreadExecutionState` must be started, refreshed, and cleared on the same worker thread
 
-- Keep-awake method selection persists across launches.
-  - default is `smart`
-  - restored infinite mode uses the persisted method
-  - smart fallback is technical only, not semantic detection of idle prevention
+- Prefer stable tray menu summaries.
+  - the menu should not depend on live-refresh while open
+  - live counters belong in the tooltip, not in the open menu
+  - per-second tick refreshes should update only what is necessary
 
-- On first launch with no settings file:
-  - `restore_infinite` defaults to `true`
-  - `detailed_logging_enabled` defaults to `true`
-  - `keepawake_method` defaults to `smart`
-  - `language_selection` defaults to `auto`
+- English is the fallback language.
+  - missing or unsupported locale resolution should still produce English text
 
-- Detailed logging persists across launches unless the process is locked by `TRAYFFEINE_LOG_LEVEL`.
-  - env override wins for that process
-  - when env override is present, the tray toggle should be disabled to avoid lying about the effective level
+- Keep correct accents and natural spelling in localized text.
 
-## Localization Model
+## Persistence Model
 
-Supported runtime locales:
+Stored settings currently include:
 
-- `en`
-- `pt-BR`
-- `es`
+- language selection
+- `restore_infinite`
+- `detailed_logging_enabled`
+- `keepawake_method`
 
-Locale behavior:
+Current first-run defaults:
 
-- startup resolves the system locale to the nearest supported locale
-- unsupported locales fall back to `en`
-- the tray menu exposes:
-  - `Auto`
-  - `Português (Brasil)`
-  - `English`
-  - `Español`
-- explicit selection is persisted between launches
+- `restore_infinite = true`
+- `detailed_logging_enabled = true`
+- `keepawake_method = smart`
+- `language_selection = auto`
 
-When extending localization:
-
-- add new message ids to the catalogs in `i18n.py`
-- keep ids stable and presentation-oriented
-- add or update presenter and tray tests
-- avoid leaking localized text into state or backend code
-- keep correct accents and natural spelling in every language
+Timed sessions must never resume after restart.
 
 ## Logging Model
 
-Current runtime log file:
+Current log file:
 
 - `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
 
@@ -198,53 +186,34 @@ Logging policy:
 
 - default runtime level is `WARNING`
 - detailed logging maps to `INFO`
-- meaningful user and lifecycle actions may be logged at `INFO`
+- meaningful lifecycle and user actions may be logged at `INFO`
 - high-frequency internal events must not be logged at `INFO`
-  - do not log every tick
-  - do not log every menu rebuild
-  - do not log every tray refresh callback
 
-Useful `INFO` events:
+Examples of useful `INFO` events:
 
 - app start and exit
 - preset selection
-- infinite enable/disable
+- infinite mode enable or disable
+- language change
+- keep-awake method change
 - timer expiration
-- language changes
 - opening logs folder
-- enabling or disabling detailed logging
+- toggling detailed logging
 - clearing logs
 
 When changing logging:
 
 - do not duplicate root handlers
 - keep `TRAYFFEINE_LOG_LEVEL` precedence intact
-- if logs are cleared, recreate a fresh current log file immediately
+- if logs are cleared, recreate the current file immediately
 
-## Tray UX Notes
+## Installer and Packaging Rules
 
-- The Windows tray menu is a native popup built through `pystray` and `TrackPopupMenuEx`.
-- Once that popup is open, its contents are effectively static until it closes.
-- Because of that platform limitation, volatile values such as per-second timers should live in the tray tooltip, not in the open menu.
-- The menu itself should prefer stable summary rows and grouped actions.
-
-Current menu layout:
-
-- header row
-- stable summary row
-- primary actions
-  - `Infinite mode`
-  - `Activate for >`
-  - `Stop`
-- `Preferences >`
-  - `Keep-awake method >`
-  - `Language >`
-- `Support >`
-  - `How it works`
-  - `Detailed logging`
-  - `Open Logs Folder`
-  - `Clear Logs`
-- `Quit`
+- Installation is per-user under `%LocalAppData%\Programs\Trayffeine`.
+- The installer always creates a current-user Start Menu shortcut.
+- The installer is unsigned.
+- Installer changes belong in `packaging/windows/Trayffeine.iss`.
+- Keep the release workflow Windows-only for artifact generation.
 
 ## Testing Expectations
 
@@ -256,28 +225,17 @@ ruff check .
 pytest
 ```
 
-Current tests cover:
-
-- locale resolution and language selection helpers
-- settings persistence
-- presenter output across locales
-- session timing behavior
-- `__main__` packaging regression
-- tray controller smoke construction and grouped menu wiring
-- runtime log configuration and log cleanup helpers
-- Windows tray double-click wrapper routing
-
 What tests do not guarantee:
 
-- actual interactive tray behavior on Windows
-- Windows notifications rendering
-- final PyInstaller runtime behavior on a user desktop
+- real interactive tray behavior on Windows
+- actual Windows notification rendering
+- full packaged runtime behavior on an end-user desktop
 
-For changes touching `pystray`, the final confidence step is a manual Windows run.
+For changes touching `pystray`, dialogs, or installer behavior, the final confidence step is still a real Windows run.
 
 ## Release and Versioning
 
-- Project version is currently `0.7.3`.
+- Project version is currently `1.0.0`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -286,37 +244,30 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 GitHub workflows:
 
-- `CI` runs on push to `main` and on pull requests.
-- `Release` runs only on tags `v*`.
-- Windows installers are produced only by the release workflow.
-- stable tags such as `v0.7.3` publish normal releases
+- `CI` runs on push to `main` and on pull requests
+- `Release` runs only on tags `v*`
+- stable tags such as `v1.0.0` publish normal releases
 - tags matching `v*-beta*` publish GitHub prereleases
 
-Current hotfix notes:
-
-- `0.7.2` moved the support help dialog off the tray menu callback flow so `OK` and the window close button behave normally.
-- `0.7.3` keeps the live tooltip counter but limits per-second refresh to tooltip text only, avoiding full tray icon/menu redraw on each tick.
-- The tray test suite explicitly covers the inactive icon/title path after a timed session expires.
-
-If you change packaging or release behavior, verify that:
+If changing packaging or release behavior, verify:
 
 - tag pushes do not trigger redundant CI runs
 - the Windows workflow still uploads the installer artifact
-- the release workflow still publishes via `gh`
+- the release workflow still publishes through `gh`
 
 ## Known Constraints
 
 - No signing pipeline is integrated yet.
-- SmartScreen reputation is not solved by the current repo state.
+- SmartScreen reputation is not solved in the current repo state.
 - Installer localization is still separate from runtime localization.
 - The app is Windows-only at runtime even though development happens in WSL.
-- Runtime diagnostics are written to `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`.
+- Teams or similar presence behavior is not guaranteed by the keep-awake methods.
 
 ## Practical Guidance For Future Agents
 
 - If the task is UI text, start in `i18n.py` and `presenter.py`.
-- If the task is timing/behavior, start in `service.py` and `session.py`.
-- If the task is tray/menu behavior, start in `tray.py`.
+- If the task is timing or keep-awake behavior, start in `service.py`, `session.py`, and `windows.py`.
+- If the task is tray/menu behavior, start in `tray.py` and `win32_tray.py`.
 - If the task is logging behavior, start in `app_logging.py` and `app.py`.
-- If the task is packaging or artifact generation, start in `packaging/windows/` and `.github/workflows/`.
-- Do not remove the Windows smoke assumptions from the docs unless you have actually validated the behavior on Windows.
+- If the task is packaging or release behavior, start in `packaging/windows/` and `.github/workflows/`.
+- Do not remove the Windows validation caveats from the docs unless the behavior has actually been tested on Windows.
