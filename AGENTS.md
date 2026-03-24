@@ -277,7 +277,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.7.1`.
+- Project version is currently `0.7.2`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -289,8 +289,13 @@ GitHub workflows:
 - `CI` runs on push to `main` and on pull requests.
 - `Release` runs only on tags `v*`.
 - Windows installers are produced only by the release workflow.
-- stable tags such as `v0.7.1` publish normal releases
+- stable tags such as `v0.7.2` publish normal releases
 - tags matching `v*-beta*` publish GitHub prereleases
+
+Current hotfix notes:
+
+- `0.7.2` moves the support help dialog off the tray menu callback flow so `OK` and the window close button behave normally.
+- The tray test suite explicitly covers the inactive icon/title path after a timed session expires.
 
 If you change packaging or release behavior, verify that:
 

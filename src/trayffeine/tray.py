@@ -74,6 +74,7 @@ class TrayIconController:
             else detailed_logging_preference
         )
         self._detailed_logging_locked = detailed_logging_locked
+        self._help_flow_pending = False
         self._clear_logs_flow_pending = False
         self._service.set_callbacks(
             on_state_change=self._handle_state_change,
@@ -292,18 +293,11 @@ class TrayIconController:
             LOGGER.exception("Failed to open Trayffeine logs folder")
 
     def _on_show_help(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
-        if self._show_help_callback is None:
+        if self._show_help_callback is None or self._help_flow_pending:
             return
 
-        translator = self._translator()
-        try:
-            LOGGER.info("Opening help dialog from tray menu")
-            self._show_help_callback(
-                translator.t("tray.help.title"),
-                translator.t("tray.help.body"),
-            )
-        except Exception:
-            LOGGER.exception("Failed to show Trayffeine help dialog")
+        self._help_flow_pending = True
+        self._start_help_flow()
 
     def _on_clear_logs(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         if self._clear_logs_callback is None or self._clear_logs_flow_pending:
@@ -382,10 +376,33 @@ class TrayIconController:
         finally:
             self._clear_logs_flow_pending = False
 
+    def _run_help_flow(self) -> None:
+        try:
+            if self._show_help_callback is None:
+                return
+
+            translator = self._translator()
+            LOGGER.info("Opening help dialog from tray menu")
+            self._show_help_callback(
+                translator.t("tray.help.title"),
+                translator.t("tray.help.body"),
+            )
+        except Exception:
+            LOGGER.exception("Failed to show Trayffeine help dialog")
+        finally:
+            self._help_flow_pending = False
+
     def _start_clear_logs_flow(self) -> None:
         threading.Thread(
             target=self._run_clear_logs_flow,
             name="trayffeine-clear-logs",
+            daemon=True,
+        ).start()
+
+    def _start_help_flow(self) -> None:
+        threading.Thread(
+            target=self._run_help_flow,
+            name="trayffeine-help",
             daemon=True,
         ).start()
 

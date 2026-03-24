@@ -212,6 +212,7 @@ def test_tray_controller_exposes_open_logs_action_in_support_menu(monkeypatch) -
 
 def test_tray_controller_exposes_help_action_in_support_menu(monkeypatch) -> None:
     tray_module = _load_tray_module(monkeypatch)
+    _run_threads_inline(monkeypatch, tray_module)
 
     shown: list[tuple[str, str]] = []
     controller = tray_module.TrayIconController(
@@ -240,6 +241,38 @@ def test_tray_controller_exposes_help_action_in_support_menu(monkeypatch) -> Non
             "- Shift: simulates Shift periodically.",
         )
     ]
+
+
+def test_tray_controller_deduplicates_pending_help_dialogs(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    shown: list[tuple[str, str]] = []
+    started_threads: list[object] = []
+
+    class FakeThread:
+        def __init__(self, *, target, name, daemon) -> None:  # noqa: ANN001
+            self.target = target
+            self.name = name
+            self.daemon = daemon
+
+        def start(self) -> None:
+            started_threads.append(self)
+
+    monkeypatch.setattr(tray_module.threading, "Thread", FakeThread)
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        show_help=lambda title, body: shown.append((title, body)),
+    )
+
+    support_menu = _submenu(controller._icon.menu, "Support")
+    help_item = _menu_item(support_menu, "How it works")
+    help_item.action(None, None)
+    help_item.action(None, None)
+    assert len(started_threads) == 1
+    started_threads[0].target()
+
+    assert len(shown) == 1
 
 
 def test_tray_controller_exposes_clear_logs_action_with_confirmation(monkeypatch) -> None:
@@ -413,6 +446,24 @@ def test_tray_controller_deduplicates_pending_clear_logs_dialogs(monkeypatch) ->
 
     assert len(confirmations) == 1
     assert cleared == ["cleared"]
+
+
+def test_tray_controller_timer_finished_refreshes_inactive_icon(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    service = FakeService()
+    service.activate(timedelta(minutes=15), "15m")
+    controller = tray_module.TrayIconController(service, system_locale="en")
+
+    service.mode = SessionMode.off()
+    controller._notify_timer_finished()
+
+    assert controller._icon.title == "Trayffeine: inactive"
+    assert controller._icon.icon is controller._images["inactive"]
+    assert controller._icon.notification == (
+        "Trayffeine",
+        "Session ended. Trayffeine returned to inactive mode.",
+    )
 
 
 def _load_tray_module(monkeypatch):

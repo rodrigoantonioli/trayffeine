@@ -21,12 +21,16 @@ Development happens in WSL, but the official Windows build is produced in GitHub
 - First launch defaults to infinite mode with detailed logging enabled until a settings file exists
 - Support actions to show help, open logs, and clear logs
 
+## Latest Hotfix
+
+`0.7.2` fixes the support help dialog so `OK` and window close now work normally, and only one help dialog can be opened at a time. It also keeps explicit test coverage that timed-session expiration stops the keep-awake backend and returns the tray icon and tooltip to the inactive state.
+
 ## Tray Menu UX
 
 The menu is intentionally split into stable sections:
 
 - top status rows
-  - `Trayffeine v0.7.1`
+  - `Trayffeine v0.7.2`
   - a stable summary such as `Inactive`, `Active until 14:32`, or `Infinite mode active`
 - primary actions
   - `Infinite mode`
@@ -109,6 +113,7 @@ Environment overrides:
 Support actions:
 
 - `How it works` opens a short help dialog with the session model, double-click behavior, and method summary
+- the help dialog opens in its own flow so it closes normally with `OK` or the window close button
 - `Detailed logging` lives in `Support` together with the log actions
 - `Open Logs Folder` opens `%LOCALAPPDATA%\Trayffeine\logs`
 - `Clear Logs` asks for confirmation, deletes `trayffeine.log` and rotated backups, and immediately recreates a fresh current log file
@@ -172,7 +177,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.1 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.2 -Clean
 ```
 
 ## GitHub Actions
@@ -181,7 +186,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.
 - `Release`: runs only on tags matching `v*`
 - official releases are generated from the Windows workflow and uploaded as GitHub release assets
 - release publishing uses the `gh` CLI on the Windows runner
-- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.1` is a normal stable release
+- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.2` is a normal stable release
 
 ## Localization Notes
 
