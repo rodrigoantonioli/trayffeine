@@ -15,7 +15,7 @@ class FakeBaseIcon:
         self.notified.append((wparam, lparam))
 
 
-def test_win32_double_click_icon_toggles_without_forwarding_single_click(monkeypatch) -> None:
+def test_win32_double_click_icon_toggles_and_preserves_base_notify_flow(monkeypatch) -> None:
     fake_pystray = ModuleType("pystray")
     fake_pystray.__path__ = []
     fake_pystray.Icon = FakeBaseIcon
@@ -47,4 +47,7 @@ def test_win32_double_click_icon_toggles_without_forwarding_single_click(monkeyp
     icon._on_notify(0, fake_win32_module.win32.WM_RBUTTONUP)
 
     assert calls == ["double"]
-    assert icon.notified == [(0, fake_win32_module.win32.WM_RBUTTONUP)]
+    assert icon.notified == [
+        (0, fake_win32_module.win32.WM_LBUTTONUP),
+        (0, fake_win32_module.win32.WM_RBUTTONUP),
+    ]
