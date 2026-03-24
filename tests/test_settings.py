@@ -11,6 +11,7 @@ def test_settings_store_round_trips_manual_locale_and_restore_flag(tmp_path) -> 
     expected = StoredSettings(
         language_selection=LanguageSelection.explicit("pt-BR"),
         restore_infinite=True,
+        detailed_logging_enabled=True,
     )
 
     store.save(expected)
@@ -27,6 +28,7 @@ def test_settings_store_defaults_to_auto_for_invalid_payload(tmp_path) -> None:
 
     assert loaded.language_selection == LanguageSelection.explicit("en")
     assert loaded.restore_infinite is False
+    assert loaded.detailed_logging_enabled is False
 
 
 def test_settings_store_defaults_when_file_is_missing(tmp_path) -> None:
