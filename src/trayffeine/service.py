@@ -80,7 +80,7 @@ class TrayffeineService:
 
     def activate(self, duration: timedelta | None, preset_key: str) -> None:
         with self._lock:
-            if self._state.mode.is_active(self._now_fn()):
+            if self._mode_has_pending_backend(self._state.mode):
                 self._queue_backend_stop_locked(self._backend)
             self._state.activate(duration, preset_key)
             self._last_sent_at = None
@@ -90,7 +90,7 @@ class TrayffeineService:
 
     def deactivate(self) -> None:
         with self._lock:
-            if self._state.mode.is_active(self._now_fn()):
+            if self._mode_has_pending_backend(self._state.mode):
                 self._queue_backend_stop_locked(self._backend)
             self._state.deactivate()
             self._last_sent_at = None
@@ -100,10 +100,13 @@ class TrayffeineService:
     def toggle_infinite(self) -> None:
         with self._lock:
             now = self._now_fn()
+            had_pending_backend = self._mode_has_pending_backend(self._state.mode)
             if self._state.mode.is_active(now):
                 self._queue_backend_stop_locked(self._backend)
                 self._state.deactivate()
             else:
+                if had_pending_backend:
+                    self._queue_backend_stop_locked(self._backend)
                 self._state.activate(None, "infinite")
                 self._queue_backend_start_locked(self._backend)
             self._last_sent_at = None
@@ -112,19 +115,19 @@ class TrayffeineService:
 
     def set_backend(self, backend: InputBackend) -> None:
         with self._lock:
-            was_active = self._state.mode.is_active(self._now_fn())
+            had_pending_backend = self._mode_has_pending_backend(self._state.mode)
             old_backend = self._backend
-            if was_active:
+            if had_pending_backend:
                 self._queue_backend_stop_locked(old_backend)
             self._backend = backend
             self._last_sent_at = None
-            if was_active:
+            if had_pending_backend:
                 self._queue_backend_start_locked(backend)
         self._wake_event.set()
 
     def quit(self) -> None:
         with self._lock:
-            if self._state.mode.is_active(self._now_fn()):
+            if self._mode_has_pending_backend(self._state.mode):
                 self._queue_backend_stop_locked(self._backend)
         self._stop_event.set()
         self._wake_event.set()
@@ -237,3 +240,6 @@ class TrayffeineService:
             backend.on_session_stop()
         except OSError:
             LOGGER.exception("Failed to stop keep-awake backend")
+
+    def _mode_has_pending_backend(self, mode: SessionMode) -> bool:
+        return mode.kind != "off"

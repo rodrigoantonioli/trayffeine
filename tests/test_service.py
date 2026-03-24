@@ -59,6 +59,22 @@ class Clock:
             self.current += delta
 
 
+class FakeThread:
+    def __init__(self, *, target, daemon, name) -> None:  # noqa: ANN001
+        self.target = target
+        self.daemon = daemon
+        self.name = name
+
+    def start(self) -> None:
+        return
+
+    def is_alive(self) -> bool:
+        return False
+
+    def join(self, timeout=None) -> None:  # noqa: ANN001
+        return
+
+
 def test_service_activation_and_deactivation_call_backend_hooks() -> None:
     backend = BackendSpy()
     service = TrayffeineService(backend=backend)
@@ -144,6 +160,41 @@ def test_service_runs_backend_lifecycle_on_the_worker_thread() -> None:
         service.quit()
 
     assert len(set(backend.thread_ids)) == 1
+
+
+def test_service_deactivate_queues_stop_for_elapsed_timed_mode(monkeypatch) -> None:
+    import trayffeine.service as service_module
+
+    monkeypatch.setattr(service_module.threading, "Thread", FakeThread)
+    clock = Clock(datetime(2026, 3, 24, 12, 0, tzinfo=UTC))
+    backend = BackendSpy()
+    service = TrayffeineService(backend=backend, now_fn=clock.now)
+
+    service._state.activate(timedelta(seconds=1), "15m")
+    clock.advance(timedelta(seconds=2))
+    service.deactivate()
+
+    assert list(service._pending_backend_ops) == [("stop", backend)]
+
+
+def test_service_set_backend_stops_elapsed_timed_backend_before_swap(monkeypatch) -> None:
+    import trayffeine.service as service_module
+
+    monkeypatch.setattr(service_module.threading, "Thread", FakeThread)
+    clock = Clock(datetime(2026, 3, 24, 12, 0, tzinfo=UTC))
+    first_backend = BackendSpy()
+    second_backend = BackendSpy()
+    service = TrayffeineService(backend=first_backend, now_fn=clock.now)
+
+    service._state.activate(timedelta(seconds=1), "15m")
+    clock.advance(timedelta(seconds=2))
+    service.set_backend(second_backend)
+
+    assert service._backend is second_backend
+    assert list(service._pending_backend_ops) == [
+        ("stop", first_backend),
+        ("start", second_backend),
+    ]
 
 
 def _wait_until(predicate, timeout: float = 0.5) -> bool:  # noqa: ANN001
