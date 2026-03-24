@@ -79,12 +79,21 @@ jobs:
           }
 
       - name: Submit WinGet update
-        if: ${{ !contains(github.ref_name, '-beta') && secrets.WINGET_GITHUB_PAT != '' }}
         shell: powershell
         env:
           WINGET_GITHUB_PAT: ${{ secrets.WINGET_GITHUB_PAT }}
         run: |
           $tag = "${{ github.ref_name }}"
+          if ($tag -like "*-beta*") {
+            Write-Host "Skipping WinGet submission for prerelease tag: $tag"
+            exit 0
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:WINGET_GITHUB_PAT)) {
+            Write-Host "Skipping WinGet submission because WINGET_GITHUB_PAT is not configured."
+            exit 0
+          }
+
           $version = $tag.TrimStart('v')
           $installerUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/Trayffeine-Setup-$version.exe"
 
