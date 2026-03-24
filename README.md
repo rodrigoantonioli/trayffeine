@@ -35,6 +35,8 @@ Installer behavior:
 Notes:
 
 - the installer is unsigned, so Windows and SmartScreen warnings are expected
+- this is normal for the current release and does not indicate malware by itself
+- code signing is not part of the repository yet, so plan for that warning during installation
 - the Start Menu shortcut is created in the current-user Start Menu, not in `ProgramData`
 - searching for `Trayffeine` from the Windows Start menu should find the app normally
 
