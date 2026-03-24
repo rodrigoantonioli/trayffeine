@@ -35,22 +35,25 @@ def build_status_entries(
     now: datetime,
     translator: Translator,
 ) -> tuple[InfoEntry, ...]:
-    elapsed = format_duration(mode.elapsed(now), translator)
-    remaining = remaining_text(mode, now, translator)
     return (
         InfoEntry(key="header", text=translator.t("tray.menu.header", version=__version__)),
-        InfoEntry(key="elapsed", text=translator.t("tray.status.elapsed", value=elapsed)),
-        InfoEntry(key="remaining", text=translator.t("tray.status.remaining", value=remaining)),
+        InfoEntry(key="summary", text=menu_summary_text(mode, now, translator)),
     )
 
 
 def tooltip_text(mode: SessionMode, now: datetime, translator: Translator) -> str:
-    if mode.kind == "infinite":
-        return translator.t("tray.tooltip.active_infinite")
+    if mode.kind == "infinite" and mode.is_active(now):
+        elapsed = format_duration(mode.elapsed(now), translator)
+        return translator.t("tray.tooltip.active_infinite", elapsed=elapsed)
 
     if mode.kind == "timed" and mode.ends_at is not None and mode.is_active(now):
+        elapsed = format_duration(mode.elapsed(now), translator)
         remaining = format_duration(mode.remaining(now), translator)
-        return translator.t("tray.tooltip.active_remaining", remaining=remaining)
+        return translator.t(
+            "tray.tooltip.active_remaining",
+            elapsed=elapsed,
+            remaining=remaining,
+        )
 
     return translator.t("tray.tooltip.inactive")
 
@@ -60,11 +63,27 @@ def build_menu_entries(
     now: datetime,
     translator: Translator,
 ) -> tuple[MenuEntry, ...]:
-    preset_entries = tuple(_preset_entry(mode, now, preset, translator) for preset in PRESETS)
     return (
-        *preset_entries,
-        MenuEntry(key="off", text=translator.t("tray.menu.off"), enabled=mode.is_active(now)),
+        MenuEntry(
+            key="infinite",
+            text=translator.t("tray.menu.infinite"),
+            checked=mode.kind == "infinite" and mode.is_active(now),
+            enabled=not (mode.kind == "infinite" and mode.is_active(now)),
+        ),
+        MenuEntry(key="stop", text=translator.t("tray.menu.stop"), enabled=mode.is_active(now)),
         MenuEntry(key="quit", text=translator.t("tray.menu.quit")),
+    )
+
+
+def build_duration_menu_entries(
+    mode: SessionMode,
+    now: datetime,
+    translator: Translator,
+) -> tuple[MenuEntry, ...]:
+    return tuple(
+        _preset_entry(mode, now, preset, translator)
+        for preset in PRESETS
+        if preset.key != "infinite"
     )
 
 
@@ -104,6 +123,14 @@ def remaining_text(mode: SessionMode, now: datetime, translator: Translator) -> 
     return translator.t("tray.status.none")
 
 
+def menu_summary_text(mode: SessionMode, now: datetime, translator: Translator) -> str:
+    if mode.kind == "infinite" and mode.is_active(now):
+        return translator.t("tray.summary.infinite")
+    if mode.kind == "timed" and mode.ends_at is not None and mode.is_active(now):
+        return translator.t("tray.summary.timed", time=format_clock(mode.ends_at))
+    return translator.t("tray.summary.inactive")
+
+
 def format_duration(delta: timedelta, translator: Translator) -> str:
     total_seconds = max(0, int(delta.total_seconds()))
     hours, remainder = divmod(total_seconds, 3600)
@@ -114,3 +141,7 @@ def format_duration(delta: timedelta, translator: Translator) -> str:
     if minutes:
         return translator.t("duration.minutes_seconds", minutes=minutes, seconds=seconds)
     return translator.t("duration.seconds", seconds=seconds)
+
+
+def format_clock(moment: datetime) -> str:
+    return moment.astimezone().strftime("%H:%M")

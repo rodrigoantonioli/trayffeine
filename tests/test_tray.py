@@ -127,11 +127,13 @@ def test_tray_controller_can_build_menu_with_localized_entries(monkeypatch) -> N
 
     assert controller._icon.title == "Trayffeine: inactive"
     assert controller._effective_locale() == "en"
-    assert [item.text for item in controller._icon.menu.items[:3]] == [
+    assert [item.text for item in controller._icon.menu.items[:2]] == [
         f"Trayffeine v{__version__}",
-        "Elapsed: 0s",
-        "Remaining: -",
+        "Inactive",
     ]
+    assert controller._icon.menu.items[3].text == "Infinite mode"
+    assert controller._icon.menu.items[4].text == "Activate for"
+    assert controller._icon.menu.items[5].text == "Stop"
 
 
 def test_tray_controller_persists_language_and_infinite_mode(monkeypatch) -> None:
@@ -182,7 +184,7 @@ def test_tray_controller_clears_restore_flag_for_timed_mode(monkeypatch) -> None
     service.activate(timedelta(minutes=15), "15m")
 
     assert settings_store.saved[-1].restore_infinite is False
-    assert controller._icon.title == "Trayffeine: active (15m 00s left)"
+    assert controller._icon.title == "Trayffeine: active for 0s | 15m 00s left"
 
 
 def test_double_click_toggles_any_active_mode_back_to_inactive(monkeypatch) -> None:

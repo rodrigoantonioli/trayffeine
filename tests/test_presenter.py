@@ -5,10 +5,13 @@ from datetime import UTC, datetime, timedelta
 from trayffeine import __version__
 from trayffeine.i18n import LanguageSelection, Translator
 from trayffeine.presenter import (
+    build_duration_menu_entries,
     build_language_menu_entries,
     build_menu_entries,
     build_status_entries,
+    format_clock,
     icon_variant,
+    menu_summary_text,
     timer_finished_notification,
     tooltip_text,
 )
@@ -26,11 +29,11 @@ def test_inactive_state_has_inactive_icon_and_disabled_off() -> None:
     assert tooltip_text(SessionMode.off(), now, translator) == "Trayffeine: inativo"
     assert [entry.text for entry in status_entries] == [
         f"Trayffeine v{__version__}",
-        "Tempo ativo: 0s",
-        "Tempo restante: -",
+        "Inativo",
     ]
-    assert next(entry for entry in entries if entry.key == "off").enabled is False
-    assert all(entry.checked is False for entry in entries if entry.key not in {"off", "quit"})
+    assert next(entry for entry in entries if entry.key == "stop").enabled is False
+    assert next(entry for entry in entries if entry.key == "infinite").enabled is True
+    assert next(entry for entry in entries if entry.key == "infinite").checked is False
 
 
 def test_timed_state_marks_the_selected_preset() -> None:
@@ -39,18 +42,19 @@ def test_timed_state_marks_the_selected_preset() -> None:
     translator = Translator("en")
 
     entries = build_menu_entries(mode, now, translator)
+    duration_entries = build_duration_menu_entries(mode, now, translator)
     status_entries = build_status_entries(mode, now + timedelta(minutes=1), translator)
 
     assert icon_variant(mode, now) == "active"
-    assert tooltip_text(mode, now, translator) == "Trayffeine: active (15m 00s left)"
+    assert tooltip_text(mode, now, translator) == "Trayffeine: active for 0s | 15m 00s left"
     assert [entry.text for entry in status_entries] == [
         f"Trayffeine v{__version__}",
-        "Elapsed: 1m 00s",
-        "Remaining: 14m 00s",
+        f"Active until {format_clock(now + timedelta(minutes=15))}",
     ]
-    assert next(entry for entry in entries if entry.key == "15m").checked is True
-    assert next(entry for entry in entries if entry.key == "off").enabled is True
-    assert next(entry for entry in entries if entry.key == "off").text == "Turn off"
+    assert next(entry for entry in duration_entries if entry.key == "15m").checked is True
+    assert next(entry for entry in entries if entry.key == "stop").enabled is True
+    assert next(entry for entry in entries if entry.key == "stop").text == "Stop"
+    assert next(entry for entry in entries if entry.key == "infinite").enabled is True
 
 
 def test_infinite_state_marks_infinite_preset() -> None:
@@ -61,12 +65,14 @@ def test_infinite_state_marks_infinite_preset() -> None:
     status_entries = build_status_entries(mode, now + timedelta(seconds=5), translator)
 
     assert next(entry for entry in entries if entry.key == "infinite").checked is True
-    assert next(entry for entry in entries if entry.key == "infinite").text == "Infinito"
+    assert next(entry for entry in entries if entry.key == "infinite").text == "Modo infinito"
     assert [entry.text for entry in status_entries] == [
         f"Trayffeine v{__version__}",
-        "Tiempo activo: 5s",
-        "Tiempo restante: Infinito",
+        "Modo infinito activo",
     ]
+    assert tooltip_text(mode, now + timedelta(seconds=5), translator) == (
+        "Trayffeine: activo hace 5s | infinito"
+    )
     assert timer_finished_notification(translator) == (
         "Trayffeine",
         "La sesión terminó. Trayffeine volvió al modo inactivo.",
@@ -99,3 +105,13 @@ def test_language_menu_entries_reflect_manual_selection() -> None:
 
     assert next(entry for entry in entries if entry.key == "es").checked is True
     assert next(entry for entry in entries if entry.key == "auto").checked is False
+
+
+def test_menu_summary_uses_end_time_for_timed_mode() -> None:
+    now = datetime(2026, 3, 23, 12, 0, tzinfo=UTC)
+    translator = Translator("pt-BR")
+    mode = SessionMode.timed(now, now + timedelta(minutes=30), preset_key="30m")
+
+    assert menu_summary_text(mode, now, translator) == (
+        f"Ativo ate {format_clock(now + timedelta(minutes=30))}"
+    )

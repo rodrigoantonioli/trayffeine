@@ -7,7 +7,7 @@ It is developed from WSL, but the official Windows build is produced in GitHub A
 ## Current Status
 
 - Windows tray app with no main window
-- Tray menu shows app name/version plus live `Elapsed` and `Remaining` status rows
+- Tray menu shows a stable status summary, while the live counter stays in the tray tooltip
 - Presets for `15 min`, `30 min`, `1 h`, `2 h`, and `Infinite`
 - Automatic shutdown when a timed session expires
 - Toast notification only when the timer ends
@@ -71,7 +71,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.3.6 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.4.0 -Clean
 ```
 
 ## GitHub Actions
@@ -106,3 +106,4 @@ Tray behavior itself must still be verified interactively on Windows because `py
 Runtime logs are written to `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log` on Windows.
 They rotate automatically at `256 KB` with `3` backups.
 The default log level is `WARNING`; use `TRAYFFEINE_LOG_LEVEL=INFO` only when diagnosing tray issues.
+The native Windows tray menu does not live-refresh while it is open, so Trayffeine keeps the precise live counter in the icon tooltip instead.

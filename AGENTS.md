@@ -170,7 +170,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.3.6`.
+- Project version is currently `0.4.0`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -178,6 +178,13 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
   - `packaging/windows/Trayffeine.iss`
 
 GitHub workflows:
+
+## Tray UX Notes
+
+- The Windows tray menu is a native popup built through `pystray`/`TrackPopupMenuEx`.
+- Once that popup is open, its contents are effectively static until it closes.
+- Because of that platform limitation, volatile values such as per-second timers should live in the tray tooltip, not in the open menu.
+- The menu itself should prefer stable summary rows and direct actions.
 
 - `CI` runs on push to `main` and on pull requests.
 - `Release` runs only on tags `v*`.

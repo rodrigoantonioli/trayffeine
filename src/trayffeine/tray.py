@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw
 from .assets import asset_path
 from .i18n import LanguageSelection, LocaleCode, Translator, effective_locale
 from .presenter import (
+    build_duration_menu_entries,
     build_language_menu_entries,
     build_menu_entries,
     build_status_entries,
@@ -79,7 +80,9 @@ class TrayIconController:
         translator = self._translator()
         status_entries = build_status_entries(snapshot.mode, snapshot.now, translator)
         entries = build_menu_entries(snapshot.mode, snapshot.now, translator)
-        off_entry = next(entry for entry in entries if entry.key == "off")
+        duration_entries = build_duration_menu_entries(snapshot.mode, snapshot.now, translator)
+        infinite_entry = next(entry for entry in entries if entry.key == "infinite")
+        stop_entry = next(entry for entry in entries if entry.key == "stop")
         quit_entry = next(entry for entry in entries if entry.key == "quit")
 
         items = [
@@ -88,31 +91,43 @@ class TrayIconController:
         ]
         items.append(Menu.SEPARATOR)
 
-        for entry in entries:
-            if entry.key not in PRESET_BY_KEY:
-                continue
-            items.append(
+        items.extend(
+            [
+                MenuItem(
+                    infinite_entry.text,
+                    self._on_activate_infinite,
+                    checked=self._static_bool(infinite_entry.checked),
+                    enabled=self._static_bool(infinite_entry.enabled),
+                ),
+                MenuItem(
+                    translator.t("tray.menu.activate_for"),
+                    self._build_duration_menu(duration_entries),
+                ),
+                MenuItem(
+                    stop_entry.text,
+                    self._on_deactivate,
+                    enabled=self._static_bool(stop_entry.enabled),
+                ),
+                Menu.SEPARATOR,
+                MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
+                MenuItem(quit_entry.text, self._on_quit),
+            ]
+        )
+        return Menu(*items)
+
+    def _build_duration_menu(self, entries: tuple[Any, ...]) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
+        return Menu(
+            *[
                 MenuItem(
                     entry.text,
                     self._make_activate_handler(entry.key),
                     checked=self._static_bool(entry.checked),
                     radio=True,
                 )
-            )
-
-        items.extend(
-            [
-                Menu.SEPARATOR,
-                MenuItem(
-                    off_entry.text,
-                    self._on_deactivate,
-                    enabled=self._static_bool(off_entry.enabled),
-                ),
-                MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
-                MenuItem(quit_entry.text, self._on_quit),
+                for entry in entries
             ]
         )
-        return Menu(*items)
 
     def _build_language_menu(self) -> Menu:
         _, Menu, MenuItem = _pystray_types()
@@ -154,6 +169,9 @@ class TrayIconController:
 
     def _on_deactivate(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         self._service.deactivate()
+
+    def _on_activate_infinite(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        self._service.activate(None, "infinite")
 
     def _on_quit(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         self._service.quit()
