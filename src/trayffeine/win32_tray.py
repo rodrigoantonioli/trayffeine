@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 CS_DBLCLKS = 0x0008
+WM_LBUTTONDBLCLK = 0x0203
 WM_TRAYFFEINE_INVOKE = 0x0400 + 42
 
 LOGGER = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ def create_icon(
                         lparam,
                         threading.current_thread().name,
                     )
-                    if lparam == pystray_win32.win32.WM_LBUTTONDBLCLK:
+                    if lparam == WM_LBUTTONDBLCLK:
                         if self._on_double_click_callback is not None:
                             LOGGER.info("Handling tray double click")
                             self._on_double_click_callback()

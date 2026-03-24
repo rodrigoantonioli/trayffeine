@@ -5,7 +5,7 @@ import importlib
 import sys
 from types import ModuleType, SimpleNamespace
 
-from trayffeine.win32_tray import CS_DBLCLKS, WM_TRAYFFEINE_INVOKE
+from trayffeine.win32_tray import CS_DBLCLKS, WM_LBUTTONDBLCLK, WM_TRAYFFEINE_INVOKE
 
 
 class FakeBaseIcon:
@@ -80,7 +80,7 @@ def test_win32_double_click_icon_toggles_and_preserves_base_notify_flow(monkeypa
     )
 
     icon._on_notify(0, fake_win32_module.win32.WM_LBUTTONUP)
-    icon._on_notify(0, fake_win32_module.win32.WM_LBUTTONDBLCLK)
+    icon._on_notify(0, WM_LBUTTONDBLCLK)
     icon._on_notify(0, fake_win32_module.win32.WM_RBUTTONUP)
 
     assert calls == ["double"]
