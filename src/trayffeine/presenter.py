@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from . import __version__
 from .i18n import LanguageSelection, Translator, build_language_options
 from .session import PRESETS, DurationPreset, SessionMode
 
@@ -15,6 +16,12 @@ class MenuEntry:
     enabled: bool = True
 
 
+@dataclass(frozen=True)
+class InfoEntry:
+    key: str
+    text: str
+
+
 def app_name(translator: Translator) -> str:
     return translator.t("app.name")
 
@@ -23,12 +30,26 @@ def icon_variant(mode: SessionMode, now: datetime) -> str:
     return "active" if mode.is_active(now) else "inactive"
 
 
+def build_status_entries(
+    mode: SessionMode,
+    now: datetime,
+    translator: Translator,
+) -> tuple[InfoEntry, ...]:
+    elapsed = format_duration(mode.elapsed(now), translator)
+    remaining = remaining_text(mode, now, translator)
+    return (
+        InfoEntry(key="header", text=translator.t("tray.menu.header", version=__version__)),
+        InfoEntry(key="elapsed", text=translator.t("tray.status.elapsed", value=elapsed)),
+        InfoEntry(key="remaining", text=translator.t("tray.status.remaining", value=remaining)),
+    )
+
+
 def tooltip_text(mode: SessionMode, now: datetime, translator: Translator) -> str:
     if mode.kind == "infinite":
         return translator.t("tray.tooltip.active_infinite")
 
     if mode.kind == "timed" and mode.ends_at is not None and mode.is_active(now):
-        remaining = format_remaining(mode.remaining(now), translator)
+        remaining = format_duration(mode.remaining(now), translator)
         return translator.t("tray.tooltip.active_remaining", remaining=remaining)
 
     return translator.t("tray.tooltip.inactive")
@@ -75,7 +96,15 @@ def _preset_entry(
     return MenuEntry(key=preset.key, text=translator.t(f"preset.{preset.key}"), checked=checked)
 
 
-def format_remaining(delta: timedelta, translator: Translator) -> str:
+def remaining_text(mode: SessionMode, now: datetime, translator: Translator) -> str:
+    if mode.kind == "infinite" and mode.is_active(now):
+        return translator.t("tray.status.infinite")
+    if mode.kind == "timed" and mode.ends_at is not None and mode.is_active(now):
+        return format_duration(mode.remaining(now), translator)
+    return translator.t("tray.status.none")
+
+
+def format_duration(delta: timedelta, translator: Translator) -> str:
     total_seconds = max(0, int(delta.total_seconds()))
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)

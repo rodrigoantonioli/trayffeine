@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from PIL import Image, ImageDraw
-from pystray import Icon, Menu, MenuItem
 
 from .assets import asset_path
 from .i18n import LanguageSelection, LocaleCode, Translator, effective_locale
@@ -11,33 +12,58 @@ from .presenter import (
     app_name,
     build_language_menu_entries,
     build_menu_entries,
+    build_status_entries,
     icon_variant,
     timer_finished_notification,
     tooltip_text,
 )
 from .service import TrayffeineService
 from .session import PRESET_BY_KEY
+from .settings import SettingsStore, StoredSettings
+from .win32_tray import create_icon
+
+LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from pystray import Icon, Menu, MenuItem
+
+
+def _pystray_types() -> tuple[Any, Any, Any]:
+    from pystray import Icon, Menu, MenuItem
+
+    return Icon, Menu, MenuItem
 
 
 class TrayIconController:
-    def __init__(self, service: TrayffeineService, *, system_locale: LocaleCode) -> None:
+    def __init__(
+        self,
+        service: TrayffeineService,
+        *,
+        system_locale: LocaleCode,
+        initial_language_selection: LanguageSelection | None = None,
+        settings_store: SettingsStore | None = None,
+    ) -> None:
         self._service = service
         self._system_locale = system_locale
-        self._language_selection = LanguageSelection.auto()
+        self._language_selection = initial_language_selection or LanguageSelection.auto()
+        self._settings_store = settings_store
         self._service.set_callbacks(
-            on_state_change=self._refresh,
+            on_state_change=self._handle_state_change,
             on_timer_finished=self._notify_timer_finished,
+            on_tick=self._refresh,
         )
         self._images = {
             "active": self._load_image("trayffeine-active.png", fill="#9c5f2d"),
             "inactive": self._load_image("trayffeine-inactive.png", fill="#8b96a5"),
         }
         translator = self._translator()
-        self._icon = Icon(
+        _, _, _ = _pystray_types()
+        self._icon = create_icon(
             name="trayffeine",
             title=app_name(translator),
             icon=self._images["inactive"],
             menu=self._build_menu(),
+            on_double_click=self._toggle_infinite,
         )
 
     def run(self) -> None:
@@ -48,13 +74,20 @@ class TrayIconController:
         self._refresh()
 
     def _build_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
         snapshot = self._service.snapshot()
         translator = self._translator()
+        status_entries = build_status_entries(snapshot.mode, snapshot.now, translator)
         entries = build_menu_entries(snapshot.mode, snapshot.now, translator)
         off_entry = next(entry for entry in entries if entry.key == "off")
         quit_entry = next(entry for entry in entries if entry.key == "quit")
 
-        items = []
+        items = [
+            MenuItem(entry.text, self._noop, enabled=self._static_bool(False))
+            for entry in status_entries
+        ]
+        items.append(Menu.SEPARATOR)
+
         for entry in entries:
             if entry.key not in PRESET_BY_KEY:
                 continue
@@ -82,6 +115,7 @@ class TrayIconController:
         return Menu(*items)
 
     def _build_language_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
         translator = self._translator()
         entries = build_language_menu_entries(
             self._language_selection,
@@ -113,6 +147,7 @@ class TrayIconController:
                 self._language_selection = LanguageSelection.auto()
             else:
                 self._language_selection = LanguageSelection.explicit(selection_key)
+            self._persist_settings()
             self._refresh()
 
         return handler
@@ -124,6 +159,10 @@ class TrayIconController:
         self._service.quit()
         icon.stop()
 
+    def _handle_state_change(self) -> None:
+        self._persist_settings()
+        self._refresh()
+
     def _refresh(self) -> None:
         snapshot = self._service.snapshot()
         translator = self._translator()
@@ -134,12 +173,16 @@ class TrayIconController:
             self._icon.update_menu()
 
     def _notify_timer_finished(self) -> None:
+        self._persist_settings()
         self._refresh()
         title, message = timer_finished_notification(self._translator())
         try:
             self._icon.notify(message, title)
         except NotImplementedError:
             return
+
+    def _toggle_infinite(self) -> None:
+        self._service.toggle_infinite()
 
     def _translator(self) -> Translator:
         return Translator(self._effective_locale())
@@ -153,6 +196,23 @@ class TrayIconController:
 
         return inner
 
+    def _noop(self, icon: Icon | None = None, item: MenuItem | None = None) -> None:  # noqa: ARG002
+        return
+
+    def _persist_settings(self) -> None:
+        if self._settings_store is None:
+            return
+
+        snapshot = self._service.snapshot()
+        settings = StoredSettings(
+            language_selection=self._language_selection,
+            restore_infinite=(
+                snapshot.mode.kind == "infinite"
+                and snapshot.mode.is_active(snapshot.now)
+            ),
+        )
+        self._settings_store.save(settings)
+
     def _load_image(self, filename: str, *, fill: str) -> Image.Image:
         path = asset_path(filename)
         if path.exists():
@@ -163,7 +223,8 @@ class TrayIconController:
     def _fallback_image(self, *, fill: str) -> Image.Image:
         image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
-        draw.rounded_rectangle((16, 18, 48, 48), radius=8, fill=fill)
-        draw.rectangle((22, 12, 42, 22), fill="#f3efe7")
-        draw.arc((18, 20, 48, 46), start=270, end=90, fill="#f3efe7", width=4)
+        draw.ellipse((16, 44, 52, 56), fill=(0, 0, 0, 32))
+        draw.rounded_rectangle((16, 20, 48, 48), radius=8, fill=fill)
+        draw.rounded_rectangle((16, 16, 48, 26), radius=6, fill="#f3efe7")
+        draw.arc((20, 24, 48, 46), start=270, end=90, fill="#f3efe7", width=4)
         return image

@@ -37,12 +37,14 @@ class TrayffeineService:
         keepawake_interval: timedelta = DEFAULT_KEEPAWAKE_INTERVAL,
         on_state_change: Callable[[], None] | None = None,
         on_timer_finished: Callable[[], None] | None = None,
+        on_tick: Callable[[], None] | None = None,
     ) -> None:
         self._backend = backend
         self._now_fn = now_fn
         self._keepawake_interval = keepawake_interval
         self._on_state_change = on_state_change
         self._on_timer_finished = on_timer_finished
+        self._on_tick = on_tick
         self._state = SessionState(now_fn=now_fn)
         self._last_sent_at: datetime | None = None
         self._lock = threading.RLock()
@@ -60,9 +62,11 @@ class TrayffeineService:
         *,
         on_state_change: Callable[[], None] | None,
         on_timer_finished: Callable[[], None] | None,
+        on_tick: Callable[[], None] | None = None,
     ) -> None:
         self._on_state_change = on_state_change
         self._on_timer_finished = on_timer_finished
+        self._on_tick = on_tick
 
     def snapshot(self) -> ServiceSnapshot:
         with self._lock:
@@ -78,6 +82,17 @@ class TrayffeineService:
     def deactivate(self) -> None:
         with self._lock:
             self._state.deactivate()
+            self._last_sent_at = None
+        self._wake_event.set()
+        self._emit_state_change()
+
+    def toggle_infinite(self) -> None:
+        with self._lock:
+            now = self._now_fn()
+            if self._state.mode.is_active(now):
+                self._state.deactivate()
+            else:
+                self._state.activate(None, "infinite")
             self._last_sent_at = None
         self._wake_event.set()
         self._emit_state_change()
@@ -111,6 +126,7 @@ class TrayffeineService:
                     if mode.kind == "timed" and mode.ends_at is not None:
                         expires_in = max(0.0, (mode.ends_at - now).total_seconds())
                         timeout = min(timeout, expires_in)
+                    timeout = min(timeout, 1.0)
                     send_keepawake = due_at <= now
                 else:
                     self._last_sent_at = None
@@ -130,8 +146,10 @@ class TrayffeineService:
                         self._last_sent_at = self._now_fn()
                 continue
 
-            self._wake_event.wait(timeout=timeout)
+            woke_early = self._wake_event.wait(timeout=timeout)
             self._wake_event.clear()
+            if not woke_early and self.snapshot().mode.is_active():
+                self._emit_tick()
 
     def _emit_state_change(self) -> None:
         if self._on_state_change is None:
@@ -149,3 +167,10 @@ class TrayffeineService:
         except Exception:
             LOGGER.exception("Timer finished callback failed")
 
+    def _emit_tick(self) -> None:
+        if self._on_tick is None:
+            return
+        try:
+            self._on_tick()
+        except Exception:
+            LOGGER.exception("Tick callback failed")

@@ -12,15 +12,20 @@ def test_activate_timed_session_sets_expected_end_time() -> None:
     mode = state.activate(timedelta(minutes=30), preset_key="30m")
 
     assert mode.kind == "timed"
+    assert mode.started_at == now
     assert mode.ends_at == now + timedelta(minutes=30)
     assert mode.preset_key == "30m"
+    assert mode.elapsed(now + timedelta(minutes=5)) == timedelta(minutes=5)
 
 
 def test_activate_infinite_and_deactivate() -> None:
-    state = SessionState()
+    now = datetime(2026, 3, 23, 12, 0, tzinfo=UTC)
+    state = SessionState(now_fn=lambda: now)
 
     mode = state.activate(None, preset_key="infinite")
     assert mode.kind == "infinite"
+    assert mode.started_at == now
+    assert mode.elapsed(now + timedelta(seconds=20)) == timedelta(seconds=20)
 
     off = state.deactivate()
     assert off.kind == "off"
@@ -48,4 +53,3 @@ def test_next_keepawake_uses_59_second_interval() -> None:
     last_sent = now - timedelta(seconds=10)
 
     assert next_keepawake_at(now=now, last_sent_at=last_sent) == last_sent + timedelta(seconds=59)
-

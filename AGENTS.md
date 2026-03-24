@@ -9,12 +9,16 @@ Trayffeine is a small Windows system tray application that keeps the machine awa
 Primary product behavior:
 
 - no main window
-- tray icon with active/inactive states
+- tray icon with active/inactive states and a pressed-looking active variant
 - presets: `15m`, `30m`, `1h`, `2h`, `infinite`
+- tray menu shows app name/version plus live elapsed and remaining status rows
 - timer expiration returns the app to inactive mode
 - one notification when a timed session ends
 - single-instance guard on Windows
 - runtime localization for `pt-BR`, `en`, and `es`
+- persistent language selection
+- infinite mode can be restored on relaunch, but timed sessions always start inactive
+- double-click on the tray icon toggles infinite mode
 
 ## Environment Model
 
@@ -42,11 +46,11 @@ For real tray validation, run the app from Windows in a real Windows path.
   - runtime bootstrap
   - acquires the Windows single-instance mutex
   - detects the system locale
-  - wires the service to the tray controller
+  - loads persisted settings and wires the service to the tray controller
 
 - `src/trayffeine/service.py`
   - background worker loop
-  - owns keep-awake scheduling and timer expiration
+  - owns keep-awake scheduling, timer expiration, and live UI refresh cadence
   - state changes are surfaced through callbacks
 
 - `src/trayffeine/session.py`
@@ -68,8 +72,17 @@ For real tray validation, run the app from Windows in a real Windows path.
 - `src/trayffeine/tray.py`
   - pystray integration
   - menu rebuilding
-  - in-memory language override
+  - persistent language selection
+  - double-click toggle handling
   - icon refresh and notification dispatch
+
+- `src/trayffeine/settings.py`
+  - persisted settings storage
+  - stores language selection and infinite-mode restore flag only
+
+- `src/trayffeine/win32_tray.py`
+  - Windows-specific tray icon wrapper
+  - intercepts tray icon double-click without changing right-click menu behavior
 
 - `src/trayffeine/windows.py`
   - Windows-specific backend only
@@ -97,9 +110,9 @@ For real tray validation, run the app from Windows in a real Windows path.
 - English is the default fallback language.
   - if locale resolution fails or a translation key is missing, the code should still produce English text
 
-- Manual language selection is session-only.
-  - there is no persistence layer yet
-  - if you add persistence, that is a separate feature and should be treated as such
+- Manual language selection persists across launches.
+  - `Auto` still follows the system locale
+  - timed sessions still start inactive on relaunch
 
 ## Localization Model
 
@@ -118,7 +131,7 @@ Locale behavior:
   - `Português (Brasil)`
   - `English`
   - `Español`
-- explicit selection overrides only the current process lifetime
+- explicit selection is persisted between launches
 
 When extending localization:
 
@@ -140,10 +153,12 @@ pytest
 Current tests cover:
 
 - locale resolution and language selection helpers
+- settings persistence
 - presenter output across locales
 - session timing behavior
 - `__main__` packaging regression
 - tray controller smoke construction
+- Windows tray double-click wrapper routing
 
 What tests do not guarantee:
 
@@ -155,7 +170,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.2.0`.
+- Project version is currently `0.3.0`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -172,6 +187,7 @@ If you change packaging or release behavior, verify that:
 
 - tag pushes do not trigger redundant CI runs
 - the Windows workflow still uploads the installer artifact
+- the release workflow publishes via `gh` rather than a deprecated JS release action
 
 ## Known Constraints
 
