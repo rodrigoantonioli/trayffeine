@@ -26,7 +26,7 @@ Development happens in WSL, but the official Windows build is produced in GitHub
 The menu is intentionally split into stable sections:
 
 - top status rows
-  - `Trayffeine v0.7.0`
+  - `Trayffeine v0.7.1`
   - a stable summary such as `Inactive`, `Active until 14:32`, or `Infinite mode active`
 - primary actions
   - `Infinite mode`
@@ -172,7 +172,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.0 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.1 -Clean
 ```
 
 ## GitHub Actions
@@ -181,7 +181,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.
 - `Release`: runs only on tags matching `v*`
 - official releases are generated from the Windows workflow and uploaded as GitHub release assets
 - release publishing uses the `gh` CLI on the Windows runner
-- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.0` is a normal stable release
+- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.1` is a normal stable release
 
 ## Localization Notes
 
