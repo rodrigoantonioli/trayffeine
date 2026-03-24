@@ -77,3 +77,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "gh release create failed"
           }
+
+      - name: Submit WinGet update
+        if: ${{ !contains(github.ref_name, '-beta') && secrets.WINGET_GITHUB_PAT != '' }}
+        shell: powershell
+        env:
+          WINGET_GITHUB_PAT: ${{ secrets.WINGET_GITHUB_PAT }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          $installerUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/Trayffeine-Setup-$version.exe"
+
+          powershell -ExecutionPolicy Bypass -File packaging\winget\update.ps1 `
+            -PackageIdentifier "RodrigoAntonioli.Trayffeine" `
+            -PackageVersion $version `
+            -InstallerUrl $installerUrl `
+            -GitHubToken $env:WINGET_GITHUB_PAT

@@ -73,6 +73,28 @@ secret.
 
 The helper script for that path is [`update.ps1`](./update.ps1).
 
+## GitHub Actions Automation
+
+The repository release workflow is now prepared to submit WinGet updates
+automatically after stable releases.
+
+Conditions:
+
+- the tag must be a stable tag like `v1.0.1`
+- beta tags such as `v1.1.0-beta1` do not submit to WinGet
+- the repository must define the Actions secret `WINGET_GITHUB_PAT`
+
+Required secret:
+
+- `WINGET_GITHUB_PAT`
+  - value: a GitHub classic PAT with `public_repo`
+
+The workflow derives:
+
+- package id: `RodrigoAntonioli.Trayffeine`
+- version: from the tag without the leading `v`
+- installer URL: from the GitHub release asset naming convention
+
 ## Notes About SmartScreen
 
 Publishing to WinGet improves discoverability and installation convenience. It
