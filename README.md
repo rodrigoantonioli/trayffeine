@@ -71,7 +71,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.3.3 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.3.4 -Clean
 ```
 
 ## GitHub Actions
@@ -102,3 +102,5 @@ pytest
 ```
 
 Tray behavior itself must still be verified interactively on Windows because `pystray` runtime behavior is only partially covered by unit tests.
+
+Runtime logs are written to `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log` on Windows.

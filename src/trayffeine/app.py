@@ -2,11 +2,14 @@ from __future__ import annotations
 
 
 def run_app() -> None:
+    from .app_logging import configure_logging
     from .i18n import detect_system_locale
     from .service import TrayffeineService
     from .settings import SettingsStore
     from .tray import TrayIconController
     from .windows import SingleInstanceGuard, WindowsInputBackend
+
+    configure_logging()
 
     guard = SingleInstanceGuard.acquire("Local\\TrayffeineSingleInstance")
     if not guard.acquired:

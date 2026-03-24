@@ -170,7 +170,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.3.3`.
+- Project version is currently `0.3.4`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -195,6 +195,7 @@ If you change packaging or release behavior, verify that:
 - SmartScreen reputation is not solved by the current repo state.
 - Installer localization is still separate from runtime localization.
 - The app is Windows-only at runtime even though development happens in WSL.
+- Runtime diagnostics are written to `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`.
 
 ## Practical Guidance For Future Agents
 

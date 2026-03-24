@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.3.3"
+  #define AppVersion "0.3.4"
 #endif
 
 #ifndef SourceRoot
@@ -27,6 +27,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={localappdata}\Programs\{#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
+AppMutex=Local\TrayffeineSingleInstance
 ArchitecturesInstallIn64BitMode=x64compatible
 Compression=lzma
 SolidCompression=yes
@@ -35,6 +36,9 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir={#OutputDir}
 OutputBaseFilename=Trayffeine-Setup-{#MyAppVersion}
 SetupIconFile={#SourceRoot}\assets\trayffeine-app.ico
+CloseApplications=yes
+CloseApplicationsFilter={#MyAppExeName}
+RestartApplications=no
 
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"

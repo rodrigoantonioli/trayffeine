@@ -125,7 +125,7 @@ def test_tray_controller_can_build_menu_with_localized_entries(monkeypatch) -> N
     service = FakeService()
     controller = tray_module.TrayIconController(service, system_locale="en")
 
-    assert controller._icon.title == "Trayffeine"
+    assert controller._icon.title == "Trayffeine: inactive"
     assert controller._effective_locale() == "en"
     assert [item.text for item in controller._icon.menu.items[:3]] == [
         f"Trayffeine v{__version__}",

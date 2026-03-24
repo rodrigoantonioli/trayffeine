@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -9,7 +10,6 @@ from PIL import Image, ImageDraw
 from .assets import asset_path
 from .i18n import LanguageSelection, LocaleCode, Translator, effective_locale
 from .presenter import (
-    app_name,
     build_language_menu_entries,
     build_menu_entries,
     build_status_entries,
@@ -56,12 +56,12 @@ class TrayIconController:
             "active": self._load_image("trayffeine-active.png", fill="#9c5f2d"),
             "inactive": self._load_image("trayffeine-inactive.png", fill="#8b96a5"),
         }
+        snapshot = self._service.snapshot()
         translator = self._translator()
-        _, _, _ = _pystray_types()
         self._icon = create_icon(
             name="trayffeine",
-            title=app_name(translator),
-            icon=self._images["inactive"],
+            title=tooltip_text(snapshot.mode, snapshot.now, translator),
+            icon=self._images[icon_variant(snapshot.mode, snapshot.now)],
             menu=self._build_menu(),
             on_double_click=self._toggle_infinite,
         )
@@ -71,7 +71,7 @@ class TrayIconController:
 
     def _setup(self, icon: Icon) -> None:
         icon.visible = True
-        self._request_refresh()
+        LOGGER.info("Tray icon visible on thread=%s", threading.current_thread().name)
 
     def _build_menu(self) -> Menu:
         _, Menu, MenuItem = _pystray_types()
@@ -164,11 +164,18 @@ class TrayIconController:
         self._request_refresh()
 
     def _request_refresh(self) -> None:
+        LOGGER.info("Queueing tray refresh from thread=%s", threading.current_thread().name)
         invoke_icon_callback(self._icon, self._refresh)
 
     def _refresh(self) -> None:
         snapshot = self._service.snapshot()
         translator = self._translator()
+        LOGGER.info(
+            "Refreshing tray state kind=%s locale=%s thread=%s",
+            snapshot.mode.kind,
+            self._effective_locale(),
+            threading.current_thread().name,
+        )
         self._icon.icon = self._images[icon_variant(snapshot.mode, snapshot.now)]
         self._icon.title = tooltip_text(snapshot.mode, snapshot.now, translator)
         self._icon.menu = self._build_menu()
