@@ -69,6 +69,7 @@ def _run_app(
         confirm_message_box,
         create_keepawake_backend,
         open_path_in_shell,
+        show_info_message_box,
     )
 
     guard = SingleInstanceGuard.acquire("Local\\TrayffeineSingleInstance")
@@ -84,6 +85,7 @@ def _run_app(
         initial_language_selection=settings.language_selection,
         initial_keepawake_method=settings.keepawake_method,
         settings_store=settings_store,
+        show_help=show_info_message_box,
         open_logs_folder=lambda: _open_logs_folder(log_path, open_path_in_shell),
         clear_logs=lambda: _clear_logs(log_path),
         confirm_clear_logs=confirm_message_box,

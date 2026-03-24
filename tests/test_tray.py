@@ -131,6 +131,14 @@ def test_tray_controller_can_build_menu_with_grouped_entries(monkeypatch) -> Non
     assert menu_items[8].text == "Support"
     assert menu_items[10].text == "Quit"
 
+    preferences_menu = _submenu(controller._icon.menu, "Preferences")
+    assert _menu_item(preferences_menu, "Keep-awake method").text == "Keep-awake method"
+    assert _menu_item(preferences_menu, "Language").text == "Language"
+
+    support_menu = _submenu(controller._icon.menu, "Support")
+    assert _menu_item(support_menu, "How it works").text == "How it works"
+    assert _menu_item(support_menu, "Detailed logging").text == "Detailed logging"
+
 
 def test_tray_controller_persists_language_infinite_and_logging_settings(monkeypatch) -> None:
     tray_module = _load_tray_module(monkeypatch)
@@ -202,6 +210,38 @@ def test_tray_controller_exposes_open_logs_action_in_support_menu(monkeypatch) -
     assert opened == ["logs"]
 
 
+def test_tray_controller_exposes_help_action_in_support_menu(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    shown: list[tuple[str, str]] = []
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        show_help=lambda title, body: shown.append((title, body)),
+    )
+
+    support_menu = _submenu(controller._icon.menu, "Support")
+    help_item = _menu_item(support_menu, "How it works")
+    help_item.action(None, None)
+
+    assert shown == [
+        (
+            "How Trayffeine works",
+            "Trayffeine keeps your PC awake while a session is active.\n"
+            "\n"
+            "Infinite mode stays on until you stop it.\n"
+            "Timed presets stop automatically when time runs out.\n"
+            "Double-click the tray icon to toggle infinite mode.\n"
+            "\n"
+            "Methods:\n"
+            "- Smart: tries Windows API, then F15, then Shift.\n"
+            "- Windows API: uses the native Windows execution state API.\n"
+            "- F15: simulates F15 periodically.\n"
+            "- Shift: simulates Shift periodically.",
+        )
+    ]
+
+
 def test_tray_controller_exposes_clear_logs_action_with_confirmation(monkeypatch) -> None:
     tray_module = _load_tray_module(monkeypatch)
     _run_threads_inline(monkeypatch, tray_module)
@@ -241,14 +281,14 @@ def test_tray_controller_exposes_detailed_logging_toggle(monkeypatch) -> None:
         detailed_logging_enabled=False,
     )
 
-    preferences_menu = _submenu(controller._icon.menu, "Preferences")
-    detailed_item = _menu_item(preferences_menu, "Detailed logging")
+    support_menu = _submenu(controller._icon.menu, "Support")
+    detailed_item = _menu_item(support_menu, "Detailed logging")
     detailed_item.action(None, None)
 
     assert toggled == [True]
     assert controller._detailed_logging_enabled is True
     assert settings_store.saved[-1].detailed_logging_enabled is True
-    refreshed_item = _menu_item(_submenu(controller._icon.menu, "Preferences"), "Detailed logging")
+    refreshed_item = _menu_item(_submenu(controller._icon.menu, "Support"), "Detailed logging")
     assert _resolve_menu_flag(refreshed_item.checked, refreshed_item) is True
 
 
@@ -291,8 +331,8 @@ def test_tray_controller_disables_detailed_logging_toggle_when_locked(monkeypatc
         detailed_logging_locked=True,
     )
 
-    preferences_menu = _submenu(controller._icon.menu, "Preferences")
-    detailed_item = _menu_item(preferences_menu, "Detailed logging")
+    support_menu = _submenu(controller._icon.menu, "Support")
+    detailed_item = _menu_item(support_menu, "Detailed logging")
     detailed_item.action(None, None)
 
     assert _resolve_menu_flag(detailed_item.checked, detailed_item) is True

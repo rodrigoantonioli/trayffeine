@@ -18,14 +18,15 @@ Development happens in WSL, but the official Windows build is produced in GitHub
 - Double-clicking the tray icon toggles infinite mode on and off
 - Grouped tray menu with `Preferences` and `Support` submenus
 - Persistent `Detailed logging` toggle
-- Support actions to open or clear the logs folder
+- First launch defaults to infinite mode with detailed logging enabled until a settings file exists
+- Support actions to show help, open logs, and clear logs
 
 ## Tray Menu UX
 
 The menu is intentionally split into stable sections:
 
 - top status rows
-  - `Trayffeine v0.7.0`
+  - `Trayffeine v0.7.1`
   - a stable summary such as `Inactive`, `Active until 14:32`, or `Infinite mode active`
 - primary actions
   - `Infinite mode`
@@ -34,8 +35,9 @@ The menu is intentionally split into stable sections:
 - `Preferences >`
   - `Keep-awake method >`
   - `Language >`
-  - `Detailed logging`
 - `Support >`
+  - `How it works`
+  - `Detailed logging`
   - `Open Logs Folder`
   - `Clear Logs`
 - final action
@@ -63,6 +65,17 @@ Notes:
 - the selected method is persisted in `settings.json`
 - restored infinite mode uses the persisted method on startup
 - the smart mode fallback is technical only; it does not try to prove that Windows really avoided idle
+
+## First Launch Defaults
+
+When Trayffeine does not find any prior `settings.json`, it starts with:
+
+- infinite mode restored immediately
+- detailed logging enabled
+- keep-awake method set to `Smart`
+- language selection set to `Auto`
+
+As soon as the app saves settings, subsequent launches follow the persisted preferences.
 
 ## Logging and Support
 
@@ -95,6 +108,8 @@ Environment overrides:
 
 Support actions:
 
+- `How it works` opens a short help dialog with the session model, double-click behavior, and method summary
+- `Detailed logging` lives in `Support` together with the log actions
 - `Open Logs Folder` opens `%LOCALAPPDATA%\Trayffeine\logs`
 - `Clear Logs` asks for confirmation, deletes `trayffeine.log` and rotated backups, and immediately recreates a fresh current log file
 
@@ -157,7 +172,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.0 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.7.1 -Clean
 ```
 
 ## GitHub Actions
@@ -166,7 +181,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 0.
 - `Release`: runs only on tags matching `v*`
 - official releases are generated from the Windows workflow and uploaded as GitHub release assets
 - release publishing uses the `gh` CLI on the Windows runner
-- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.0` is a normal stable release
+- tags matching `v*-beta*` are still published as GitHub prereleases, but `0.7.1` is a normal stable release
 
 ## Localization Notes
 

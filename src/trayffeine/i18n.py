@@ -27,6 +27,7 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.preferences": "Preferences",
         "tray.menu.support": "Support",
         "tray.menu.keepawake_method": "Keep-awake method",
+        "tray.menu.help": "How it works",
         "tray.menu.open_logs": "Open Logs Folder",
         "tray.menu.clear_logs": "Clear Logs",
         "tray.menu.detailed_logging": "Detailed logging",
@@ -40,6 +41,20 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.logs.clear.title": "Clear Trayffeine logs?",
         "tray.logs.clear.body": (
             "This will remove trayffeine.log and all rotated backups.\n\nContinue?"
+        ),
+        "tray.help.title": "How Trayffeine works",
+        "tray.help.body": (
+            "Trayffeine keeps your PC awake while a session is active.\n"
+            "\n"
+            "Infinite mode stays on until you stop it.\n"
+            "Timed presets stop automatically when time runs out.\n"
+            "Double-click the tray icon to toggle infinite mode.\n"
+            "\n"
+            "Methods:\n"
+            "- Smart: tries Windows API, then F15, then Shift.\n"
+            "- Windows API: uses the native Windows execution state API.\n"
+            "- F15: simulates F15 periodically.\n"
+            "- Shift: simulates Shift periodically."
         ),
         "tray.summary.inactive": "Inactive",
         "tray.summary.infinite": "Infinite mode active",
@@ -75,6 +90,7 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.preferences": "Preferências",
         "tray.menu.support": "Suporte",
         "tray.menu.keepawake_method": "Método para manter acordado",
+        "tray.menu.help": "Como funciona",
         "tray.menu.open_logs": "Abrir pasta de logs",
         "tray.menu.clear_logs": "Limpar logs",
         "tray.menu.detailed_logging": "Logs detalhados",
@@ -89,6 +105,20 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.logs.clear.body": (
             "Isso apagará o arquivo trayffeine.log e todos os backups "
             "rotacionados.\n\nDeseja continuar?"
+        ),
+        "tray.help.title": "Como o Trayffeine funciona",
+        "tray.help.body": (
+            "O Trayffeine mantém o PC acordado enquanto uma sessão estiver ativa.\n"
+            "\n"
+            "O modo infinito fica ligado até você parar manualmente.\n"
+            "Os presets temporizados desligam automaticamente no fim do tempo.\n"
+            "Clique duas vezes no ícone da bandeja para alternar o modo infinito.\n"
+            "\n"
+            "Métodos:\n"
+            "- Inteligente: tenta Windows API, depois F15 e por fim Shift.\n"
+            "- Windows API: usa a API nativa de estado de execução do Windows.\n"
+            "- F15: simula F15 periodicamente.\n"
+            "- Shift: simula Shift periodicamente."
         ),
         "tray.summary.inactive": "Inativo",
         "tray.summary.infinite": "Modo infinito ativo",
@@ -124,6 +154,7 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.preferences": "Preferencias",
         "tray.menu.support": "Soporte",
         "tray.menu.keepawake_method": "Método para mantener activo",
+        "tray.menu.help": "Cómo funciona",
         "tray.menu.open_logs": "Abrir carpeta de logs",
         "tray.menu.clear_logs": "Limpiar logs",
         "tray.menu.detailed_logging": "Logs detallados",
@@ -137,6 +168,20 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.logs.clear.title": "¿Limpiar los logs de Trayffeine?",
         "tray.logs.clear.body": (
             "Esto eliminará trayffeine.log y todas las copias rotadas.\n\n¿Deseas continuar?"
+        ),
+        "tray.help.title": "Cómo funciona Trayffeine",
+        "tray.help.body": (
+            "Trayffeine mantiene tu PC activo mientras haya una sesión en curso.\n"
+            "\n"
+            "El modo infinito sigue activo hasta que lo detengas.\n"
+            "Los presets temporizados se detienen automáticamente al terminar.\n"
+            "Haz doble clic en el icono de la bandeja para alternar el modo infinito.\n"
+            "\n"
+            "Métodos:\n"
+            "- Inteligente: prueba API de Windows, luego F15 y después Shift.\n"
+            "- API de Windows: usa la API nativa de estado de ejecución.\n"
+            "- F15: simula F15 periódicamente.\n"
+            "- Shift: simula Shift periódicamente."
         ),
         "tray.summary.inactive": "Inactivo",
         "tray.summary.infinite": "Modo infinito activo",

@@ -26,6 +26,7 @@ ERROR_ALREADY_EXISTS = 183
 ULONG_PTR = ctypes.c_size_t
 MB_OK = 0x00000000
 MB_ICONERROR = 0x00000010
+MB_ICONINFORMATION = 0x00000040
 MB_ICONQUESTION = 0x00000020
 MB_YESNO = 0x00000004
 IDYES = 6
@@ -239,6 +240,10 @@ def create_keepawake_backend(method: KeepAwakeMethod):
 
 def show_message_box(title: str, message: str) -> None:
     user32.MessageBoxW(None, message, title, MB_OK | MB_ICONERROR)
+
+
+def show_info_message_box(title: str, message: str) -> None:
+    user32.MessageBoxW(None, message, title, MB_OK | MB_ICONINFORMATION)
 
 
 def confirm_message_box(title: str, message: str) -> bool:

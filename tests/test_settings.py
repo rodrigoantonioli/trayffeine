@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from trayffeine.i18n import LanguageSelection
-from trayffeine.settings import SettingsStore, StoredSettings
+from trayffeine.settings import SettingsStore, StoredSettings, first_run_settings
 
 
 def test_settings_store_round_trips_manual_locale_and_restore_flag(tmp_path) -> None:
@@ -36,7 +36,7 @@ def test_settings_store_defaults_to_auto_for_invalid_payload(tmp_path) -> None:
 def test_settings_store_defaults_when_file_is_missing(tmp_path) -> None:
     loaded = SettingsStore(tmp_path / "Trayffeine" / "settings.json").load()
 
-    assert loaded == StoredSettings(language_selection=LanguageSelection.auto())
+    assert loaded == first_run_settings()
 
 
 def test_settings_store_defaults_keepawake_method_when_field_is_missing(tmp_path) -> None:

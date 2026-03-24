@@ -12,6 +12,14 @@ from .keepawake import DEFAULT_KEEPAWAKE_METHOD, KeepAwakeMethod, coerce_keepawa
 LOGGER = logging.getLogger(__name__)
 
 
+def first_run_settings() -> StoredSettings:
+    return StoredSettings(
+        language_selection=LanguageSelection.auto(),
+        restore_infinite=True,
+        detailed_logging_enabled=True,
+    )
+
+
 @dataclass(frozen=True)
 class StoredSettings:
     language_selection: LanguageSelection
@@ -32,7 +40,7 @@ class SettingsStore:
         try:
             data = json.loads(self._path.read_text(encoding="utf-8"))
         except FileNotFoundError:
-            return StoredSettings(language_selection=LanguageSelection.auto())
+            return first_run_settings()
         except (OSError, json.JSONDecodeError):
             LOGGER.exception("Failed to load settings from %s", self._path)
             return StoredSettings(language_selection=LanguageSelection.auto())
