@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import importlib
+import sys
 from datetime import UTC, datetime
+from types import ModuleType
 
 from trayffeine.service import ServiceSnapshot
 from trayffeine.session import SessionMode
-from trayffeine.tray import TrayIconController
 
 
 class FakeService:
@@ -30,8 +32,63 @@ class FakeService:
         return
 
 
-def test_tray_controller_can_build_menu_with_localized_entries() -> None:
-    controller = TrayIconController(FakeService(), system_locale="en")
+class FakeMenu:
+    SEPARATOR = object()
+
+    def __init__(self, *items: object) -> None:
+        self.items = items
+
+
+class FakeMenuItem:
+    def __init__(
+        self,
+        text: str,
+        action: object = None,
+        *,
+        checked: object = None,
+        enabled: object = None,
+        radio: bool = False,
+    ) -> None:
+        self.text = text
+        self.action = action
+        self.checked = checked
+        self.enabled = enabled
+        self.radio = radio
+
+
+class FakeIcon:
+    def __init__(self, *, name: str, title: str, icon: object, menu: object) -> None:
+        self.name = name
+        self.title = title
+        self.icon = icon
+        self.menu = menu
+        self.visible = False
+
+    def run(self, setup: object = None) -> None:
+        if setup is not None:
+            setup(self)
+
+    def update_menu(self) -> None:
+        return
+
+    def notify(self, message: str, title: str) -> None:
+        self.notification = (title, message)
+
+    def stop(self) -> None:
+        return
+
+
+def test_tray_controller_can_build_menu_with_localized_entries(monkeypatch) -> None:
+    fake_pystray = ModuleType("pystray")
+    fake_pystray.Icon = FakeIcon
+    fake_pystray.Menu = FakeMenu
+    fake_pystray.MenuItem = FakeMenuItem
+
+    monkeypatch.setitem(sys.modules, "pystray", fake_pystray)
+    sys.modules.pop("trayffeine.tray", None)
+    tray_module = importlib.import_module("trayffeine.tray")
+
+    controller = tray_module.TrayIconController(FakeService(), system_locale="en")
 
     assert controller._icon.title == "Trayffeine"
     assert controller._effective_locale() == "en"
