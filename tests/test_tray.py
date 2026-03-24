@@ -92,7 +92,6 @@ class FakeIcon:
         self.menu = menu
         self.visible = False
         self.invocations = 0
-        self.posted_callbacks: list[object] = []
 
     def run(self, setup: object = None) -> None:
         if setup is not None:
@@ -102,9 +101,6 @@ class FakeIcon:
         self.invocations += 1
         callback()
 
-    def post(self, callback) -> None:  # noqa: ANN001
-        self.posted_callbacks.append(callback)
-
     def update_menu(self) -> None:
         return
 
@@ -113,11 +109,6 @@ class FakeIcon:
 
     def stop(self) -> None:
         return
-
-    def run_posted(self) -> None:
-        while self.posted_callbacks:
-            callback = self.posted_callbacks.pop(0)
-            callback()
 
 
 def test_tray_controller_can_build_menu_with_grouped_entries(monkeypatch) -> None:
@@ -211,6 +202,7 @@ def test_tray_controller_exposes_open_logs_action_in_support_menu(monkeypatch) -
 
 def test_tray_controller_exposes_clear_logs_action_with_confirmation(monkeypatch) -> None:
     tray_module = _load_tray_module(monkeypatch)
+    _run_threads_inline(monkeypatch, tray_module)
 
     cleared: list[str] = []
     confirmations: list[tuple[str, str]] = []
@@ -224,7 +216,6 @@ def test_tray_controller_exposes_clear_logs_action_with_confirmation(monkeypatch
     support_menu = _submenu(controller._icon.menu, "Support")
     clear_logs_item = _menu_item(support_menu, "Clear Logs")
     clear_logs_item.action(None, None)
-    controller._icon.run_posted()
 
     assert confirmations == [
         (
@@ -303,6 +294,7 @@ def test_tray_controller_preserves_saved_logging_preference_when_env_lock_is_act
 
 def test_tray_controller_does_not_clear_logs_when_confirmation_is_canceled(monkeypatch) -> None:
     tray_module = _load_tray_module(monkeypatch)
+    _run_threads_inline(monkeypatch, tray_module)
 
     cleared: list[str] = []
     controller = tray_module.TrayIconController(
@@ -315,7 +307,6 @@ def test_tray_controller_does_not_clear_logs_when_confirmation_is_canceled(monke
     support_menu = _submenu(controller._icon.menu, "Support")
     clear_logs_item = _menu_item(support_menu, "Clear Logs")
     clear_logs_item.action(None, None)
-    controller._icon.run_posted()
 
     assert cleared == []
 
@@ -325,6 +316,18 @@ def test_tray_controller_deduplicates_pending_clear_logs_dialogs(monkeypatch) ->
 
     cleared: list[str] = []
     confirmations: list[tuple[str, str]] = []
+    started_threads: list[object] = []
+
+    class FakeThread:
+        def __init__(self, *, target, name, daemon) -> None:  # noqa: ANN001
+            self.target = target
+            self.name = name
+            self.daemon = daemon
+
+        def start(self) -> None:
+            started_threads.append(self)
+
+    monkeypatch.setattr(tray_module.threading, "Thread", FakeThread)
     controller = tray_module.TrayIconController(
         FakeService(),
         system_locale="en",
@@ -336,7 +339,8 @@ def test_tray_controller_deduplicates_pending_clear_logs_dialogs(monkeypatch) ->
     clear_logs_item = _menu_item(support_menu, "Clear Logs")
     clear_logs_item.action(None, None)
     clear_logs_item.action(None, None)
-    controller._icon.run_posted()
+    assert len(started_threads) == 1
+    started_threads[0].target()
 
     assert len(confirmations) == 1
     assert cleared == ["cleared"]
@@ -352,6 +356,19 @@ def _load_tray_module(monkeypatch):
     sys.modules.pop("trayffeine.win32_tray", None)
     sys.modules.pop("trayffeine.tray", None)
     return importlib.import_module("trayffeine.tray")
+
+
+def _run_threads_inline(monkeypatch, tray_module) -> None:  # noqa: ANN001
+    class ImmediateThread:
+        def __init__(self, *, target, name, daemon) -> None:  # noqa: ANN001
+            self._target = target
+            self.name = name
+            self.daemon = daemon
+
+        def start(self) -> None:
+            self._target()
+
+    monkeypatch.setattr(tray_module.threading, "Thread", ImmediateThread)
 
 
 def _submenu(menu: FakeMenu, text: str) -> FakeMenu:

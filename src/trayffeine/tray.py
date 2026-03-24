@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -20,7 +21,7 @@ from .presenter import (
 from .service import TrayffeineService
 from .session import PRESET_BY_KEY
 from .settings import SettingsStore, StoredSettings
-from .win32_tray import create_icon, invoke_icon_callback, post_icon_callback
+from .win32_tray import create_icon, invoke_icon_callback
 
 LOGGER = logging.getLogger(__name__)
 
@@ -245,7 +246,7 @@ class TrayIconController:
             return
 
         self._clear_logs_flow_pending = True
-        post_icon_callback(self._icon, self._run_clear_logs_flow)
+        self._start_clear_logs_flow()
 
     def _on_toggle_detailed_logging(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         if self._detailed_logging_locked:
@@ -316,6 +317,13 @@ class TrayIconController:
             LOGGER.exception("Failed to clear Trayffeine logs")
         finally:
             self._clear_logs_flow_pending = False
+
+    def _start_clear_logs_flow(self) -> None:
+        threading.Thread(
+            target=self._run_clear_logs_flow,
+            name="trayffeine-clear-logs",
+            daemon=True,
+        ).start()
 
     def _toggle_infinite(self) -> None:
         snapshot = self._service.snapshot()
