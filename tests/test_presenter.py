@@ -6,6 +6,7 @@ from trayffeine import __version__
 from trayffeine.i18n import LanguageSelection, Translator
 from trayffeine.presenter import (
     build_duration_menu_entries,
+    build_keepawake_method_menu_entries,
     build_language_menu_entries,
     build_menu_entries,
     build_status_entries,
@@ -115,3 +116,15 @@ def test_menu_summary_uses_end_time_for_timed_mode() -> None:
     assert menu_summary_text(mode, now, translator) == (
         f"Ativo até {format_clock(now + timedelta(minutes=30))}"
     )
+
+
+def test_keepawake_method_menu_entries_reflect_selected_method() -> None:
+    entries = build_keepawake_method_menu_entries("execution-state", Translator("pt-BR"))
+
+    assert [entry.text for entry in entries] == [
+        "Inteligente",
+        "Windows API",
+        "F15",
+        "Shift",
+    ]
+    assert next(entry for entry in entries if entry.key == "execution-state").checked is True

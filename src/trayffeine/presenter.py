@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from . import __version__
 from .i18n import LanguageSelection, Translator, build_language_options
+from .keepawake import SUPPORTED_KEEPAWAKE_METHODS, KeepAwakeMethod
 from .session import PRESETS, DurationPreset, SessionMode
 
 
@@ -95,6 +96,20 @@ def build_language_menu_entries(
     return tuple(
         MenuEntry(key=option.key, text=option.label, checked=option.checked)
         for option in build_language_options(selection, system_locale, translator)
+    )
+
+
+def build_keepawake_method_menu_entries(
+    selected_method: KeepAwakeMethod,
+    translator: Translator,
+) -> tuple[MenuEntry, ...]:
+    return tuple(
+        MenuEntry(
+            key=method,
+            text=translator.t(f"tray.keepawake_method.{method}"),
+            checked=selected_method == method,
+        )
+        for method in SUPPORTED_KEEPAWAKE_METHODS
     )
 
 

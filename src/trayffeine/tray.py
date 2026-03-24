@@ -9,8 +9,10 @@ from PIL import Image, ImageDraw
 
 from .assets import asset_path
 from .i18n import LanguageSelection, LocaleCode, Translator, effective_locale
+from .keepawake import DEFAULT_KEEPAWAKE_METHOD, KeepAwakeMethod
 from .presenter import (
     build_duration_menu_entries,
+    build_keepawake_method_menu_entries,
     build_language_menu_entries,
     build_menu_entries,
     build_status_entries,
@@ -42,11 +44,13 @@ class TrayIconController:
         *,
         system_locale: LocaleCode,
         initial_language_selection: LanguageSelection | None = None,
+        initial_keepawake_method: KeepAwakeMethod = DEFAULT_KEEPAWAKE_METHOD,
         settings_store: SettingsStore | None = None,
         open_logs_folder: Callable[[], None] | None = None,
         clear_logs: Callable[[], None] | None = None,
         confirm_clear_logs: Callable[[str, str], bool] | None = None,
         set_detailed_logging_enabled: Callable[[bool], None] | None = None,
+        set_keepawake_method: Callable[[KeepAwakeMethod], None] | None = None,
         detailed_logging_enabled: bool = False,
         detailed_logging_preference: bool | None = None,
         detailed_logging_locked: bool = False,
@@ -54,11 +58,13 @@ class TrayIconController:
         self._service = service
         self._system_locale = system_locale
         self._language_selection = initial_language_selection or LanguageSelection.auto()
+        self._keepawake_method = initial_keepawake_method
         self._settings_store = settings_store
         self._open_logs_folder_callback = open_logs_folder
         self._clear_logs_callback = clear_logs
         self._confirm_clear_logs_callback = confirm_clear_logs
         self._set_detailed_logging_enabled_callback = set_detailed_logging_enabled
+        self._set_keepawake_method_callback = set_keepawake_method
         self._detailed_logging_enabled = detailed_logging_enabled
         self._detailed_logging_preference = (
             detailed_logging_enabled
@@ -172,10 +178,30 @@ class TrayIconController:
             ]
         )
 
+    def _build_keepawake_method_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
+        translator = self._translator()
+        entries = build_keepawake_method_menu_entries(self._keepawake_method, translator)
+        return Menu(
+            *[
+                MenuItem(
+                    entry.text,
+                    self._make_keepawake_method_handler(entry.key),
+                    checked=self._static_bool(entry.checked),
+                    radio=True,
+                )
+                for entry in entries
+            ]
+        )
+
     def _build_preferences_menu(self) -> Menu:
         _, Menu, MenuItem = _pystray_types()
         translator = self._translator()
         return Menu(
+            MenuItem(
+                translator.t("tray.menu.keepawake_method"),
+                self._build_keepawake_method_menu(),
+            ),
             MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
             MenuItem(
                 translator.t("tray.menu.detailed_logging"),
@@ -209,6 +235,22 @@ class TrayIconController:
             preset = PRESET_BY_KEY[preset_key]
             LOGGER.info("Timed preset selected from tray menu: %s", preset.key)
             self._service.activate(preset.duration, preset.key)
+
+        return handler
+
+    def _make_keepawake_method_handler(self, method: KeepAwakeMethod):
+        def handler(icon: Icon, item: MenuItem) -> None:  # noqa: ARG001
+            if self._set_keepawake_method_callback is not None:
+                try:
+                    self._set_keepawake_method_callback(method)
+                except Exception:
+                    LOGGER.exception("Failed to change keep-awake method")
+                    return
+
+            self._keepawake_method = method
+            self._persist_settings()
+            LOGGER.info("Keep-awake method changed from tray menu: %s", method)
+            self._request_refresh()
 
         return handler
 
@@ -360,6 +402,7 @@ class TrayIconController:
                 and snapshot.mode.is_active(snapshot.now)
             ),
             detailed_logging_enabled=self._detailed_logging_preference,
+            keepawake_method=self._keepawake_method,
         )
         self._settings_store.save(settings)
 

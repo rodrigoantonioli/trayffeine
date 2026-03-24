@@ -4,7 +4,7 @@ This file is for coding agents working in this repository. It explains the curre
 
 ## Product Summary
 
-Trayffeine is a small Windows system tray application that keeps the machine awake by simulating `F15` every 59 seconds while a session is active.
+Trayffeine is a small Windows system tray application that keeps the machine awake while a session is active.
 
 Primary product behavior:
 
@@ -17,6 +17,8 @@ Primary product behavior:
 - single-instance guard on Windows
 - runtime localization for `pt-BR`, `en`, and `es`
 - persistent language selection
+- persistent keep-awake method selection
+- supported keep-awake methods: `smart`, `execution-state`, `f15`, `shift`
 - infinite mode can be restored on relaunch, but timed sessions always start inactive
 - double-click on the tray icon toggles infinite mode
 - grouped tray menu with `Preferences` and `Support`
@@ -51,7 +53,7 @@ For real tray validation, run the app from Windows in a real Windows path.
   - loads persisted settings before final log-level selection
   - applies env-override vs persisted detailed-logging preference
   - acquires the Windows single-instance mutex
-  - wires service, tray callbacks, support actions, and crash boundary
+  - wires service, tray callbacks, keep-awake method changes, support actions, and crash boundary
 
 - `src/trayffeine/app_logging.py`
   - rotating file logger configuration
@@ -62,8 +64,13 @@ For real tray validation, run the app from Windows in a real Windows path.
 
 - `src/trayffeine/service.py`
   - background worker loop
-  - owns keep-awake scheduling, timer expiration, and live UI refresh cadence
+  - owns keep-awake scheduling, backend lifecycle, timer expiration, and live UI refresh cadence
+  - backend lifecycle and keep-awake pulses must stay on the worker thread so `SetThreadExecutionState` is started, refreshed, and cleared on the same thread
   - state changes are surfaced through callbacks
+
+- `src/trayffeine/keepawake.py`
+  - stable keep-awake method ids
+  - coercion helper for persisted settings
 
 - `src/trayffeine/session.py`
   - pure session state
@@ -91,7 +98,7 @@ For real tray validation, run the app from Windows in a real Windows path.
 
 - `src/trayffeine/settings.py`
   - persisted settings storage
-  - stores language selection, infinite-mode restore flag, and detailed-logging preference
+  - stores language selection, infinite-mode restore flag, detailed-logging preference, and keep-awake method
 
 - `src/trayffeine/win32_tray.py`
   - Windows-specific tray icon wrapper
@@ -99,7 +106,9 @@ For real tray validation, run the app from Windows in a real Windows path.
 
 - `src/trayffeine/windows.py`
   - Windows-specific backend only
-  - `SendInput` for `F15`
+  - keyboard backends for `F15` and `Shift`
+  - `SetThreadExecutionState` backend
+  - smart fallback backend: `execution-state -> f15 -> shift`
   - named mutex handling
   - message-box helper
   - confirmation-dialog helper
@@ -129,6 +138,11 @@ For real tray validation, run the app from Windows in a real Windows path.
 - Manual language selection persists across launches.
   - `Auto` still follows the system locale
   - timed sessions still start inactive on relaunch
+
+- Keep-awake method selection persists across launches.
+  - default is `smart`
+  - restored infinite mode uses the persisted method
+  - smart fallback is technical only, not semantic detection of idle prevention
 
 - Detailed logging persists across launches unless the process is locked by `TRAYFFEINE_LOG_LEVEL`.
   - env override wins for that process
@@ -215,6 +229,7 @@ Current menu layout:
   - `Activate for >`
   - `Stop`
 - `Preferences >`
+  - `Keep-awake method >`
   - `Language >`
   - `Detailed logging`
 - `Support >`
@@ -253,7 +268,7 @@ For changes touching `pystray`, the final confidence step is a manual Windows ru
 
 ## Release and Versioning
 
-- Project version is currently `0.6.2`.
+- Project version is currently `0.7.0`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -265,7 +280,7 @@ GitHub workflows:
 - `CI` runs on push to `main` and on pull requests.
 - `Release` runs only on tags `v*`.
 - Windows installers are produced only by the release workflow.
-- stable tags such as `v0.6.2` publish normal releases
+- stable tags such as `v0.7.0` publish normal releases
 - tags matching `v*-beta*` publish GitHub prereleases
 
 If you change packaging or release behavior, verify that:
