@@ -23,7 +23,8 @@ Primary product behavior:
 - double-click on the tray icon toggles infinite mode
 - grouped tray menu with `Preferences` and `Support`
 - persistent detailed logging toggle
-- support actions to open or clear the logs folder
+- first launch defaults to infinite mode with detailed logging enabled until a settings file exists
+- support actions to show help, open logs, or clear logs
 - unhandled exceptions are logged and surfaced in a Windows error dialog
 
 ## Environment Model
@@ -53,7 +54,7 @@ For real tray validation, run the app from Windows in a real Windows path.
   - loads persisted settings before final log-level selection
   - applies env-override vs persisted detailed-logging preference
   - acquires the Windows single-instance mutex
-  - wires service, tray callbacks, keep-awake method changes, support actions, and crash boundary
+  - wires service, tray callbacks, keep-awake method changes, help/support actions, and crash boundary
 
 - `src/trayffeine/app_logging.py`
   - rotating file logger configuration
@@ -94,11 +95,12 @@ For real tray validation, run the app from Windows in a real Windows path.
   - persistent language and detailed-logging preferences
   - double-click toggle handling
   - icon refresh and notification dispatch
-  - support actions for opening and clearing logs
+  - support actions for help, detailed logging, opening logs, and clearing logs
 
 - `src/trayffeine/settings.py`
   - persisted settings storage
   - stores language selection, infinite-mode restore flag, detailed-logging preference, and keep-awake method
+  - missing settings file is treated as first launch and defaults to infinite restore plus detailed logging enabled
 
 - `src/trayffeine/win32_tray.py`
   - Windows-specific tray icon wrapper
@@ -143,6 +145,12 @@ For real tray validation, run the app from Windows in a real Windows path.
   - default is `smart`
   - restored infinite mode uses the persisted method
   - smart fallback is technical only, not semantic detection of idle prevention
+
+- On first launch with no settings file:
+  - `restore_infinite` defaults to `true`
+  - `detailed_logging_enabled` defaults to `true`
+  - `keepawake_method` defaults to `smart`
+  - `language_selection` defaults to `auto`
 
 - Detailed logging persists across launches unless the process is locked by `TRAYFFEINE_LOG_LEVEL`.
   - env override wins for that process
@@ -231,8 +239,9 @@ Current menu layout:
 - `Preferences >`
   - `Keep-awake method >`
   - `Language >`
-  - `Detailed logging`
 - `Support >`
+  - `How it works`
+  - `Detailed logging`
   - `Open Logs Folder`
   - `Clear Logs`
 - `Quit`

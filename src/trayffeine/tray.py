@@ -46,6 +46,7 @@ class TrayIconController:
         initial_language_selection: LanguageSelection | None = None,
         initial_keepawake_method: KeepAwakeMethod = DEFAULT_KEEPAWAKE_METHOD,
         settings_store: SettingsStore | None = None,
+        show_help: Callable[[str, str], None] | None = None,
         open_logs_folder: Callable[[], None] | None = None,
         clear_logs: Callable[[], None] | None = None,
         confirm_clear_logs: Callable[[str, str], bool] | None = None,
@@ -60,6 +61,7 @@ class TrayIconController:
         self._language_selection = initial_language_selection or LanguageSelection.auto()
         self._keepawake_method = initial_keepawake_method
         self._settings_store = settings_store
+        self._show_help_callback = show_help
         self._open_logs_folder_callback = open_logs_folder
         self._clear_logs_callback = clear_logs
         self._confirm_clear_logs_callback = confirm_clear_logs
@@ -203,6 +205,18 @@ class TrayIconController:
                 self._build_keepawake_method_menu(),
             ),
             MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
+        )
+
+    def _build_support_menu(self) -> Menu:
+        _, Menu, MenuItem = _pystray_types()
+        translator = self._translator()
+        return Menu(
+            MenuItem(
+                translator.t("tray.menu.help"),
+                self._on_show_help,
+                enabled=self._static_bool(self._show_help_callback is not None),
+            ),
+            Menu.SEPARATOR,
             MenuItem(
                 translator.t("tray.menu.detailed_logging"),
                 self._on_toggle_detailed_logging,
@@ -212,12 +226,6 @@ class TrayIconController:
                     and not self._detailed_logging_locked
                 ),
             ),
-        )
-
-    def _build_support_menu(self) -> Menu:
-        _, Menu, MenuItem = _pystray_types()
-        translator = self._translator()
-        return Menu(
             MenuItem(
                 translator.t("tray.menu.open_logs"),
                 self._on_open_logs,
@@ -282,6 +290,20 @@ class TrayIconController:
             self._open_logs_folder_callback()
         except Exception:
             LOGGER.exception("Failed to open Trayffeine logs folder")
+
+    def _on_show_help(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        if self._show_help_callback is None:
+            return
+
+        translator = self._translator()
+        try:
+            LOGGER.info("Opening help dialog from tray menu")
+            self._show_help_callback(
+                translator.t("tray.help.title"),
+                translator.t("tray.help.body"),
+            )
+        except Exception:
+            LOGGER.exception("Failed to show Trayffeine help dialog")
 
     def _on_clear_logs(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         if self._clear_logs_callback is None or self._clear_logs_flow_pending:
