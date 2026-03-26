@@ -6,7 +6,11 @@ on:
       - main
     paths:
       - ".github/workflows/**"
+      - "AGENTS.md"
+      - "CHANGELOG.md"
+      - "README.md"
       - "assets/**"
+      - "packaging/winget/**"
       - "packaging/windows/**"
       - "pyproject.toml"
       - "scripts/**"
@@ -15,7 +19,11 @@ on:
   pull_request:
     paths:
       - ".github/workflows/**"
+      - "AGENTS.md"
+      - "CHANGELOG.md"
+      - "README.md"
       - "assets/**"
+      - "packaging/winget/**"
       - "packaging/windows/**"
       - "pyproject.toml"
       - "scripts/**"
