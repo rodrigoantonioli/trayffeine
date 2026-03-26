@@ -23,7 +23,20 @@ Trayffeine 1.0.0 is the first stable release. At this point the app provides:
 
 ## Installation
 
-Download the latest installer from the GitHub Releases page and run it on Windows.
+Preferred installation on Windows:
+
+```powershell
+winget install RodrigoAntonioli.Trayffeine
+```
+
+To upgrade later:
+
+```powershell
+winget upgrade RodrigoAntonioli.Trayffeine
+```
+
+If you prefer manual installation, download the latest installer from the GitHub
+Releases page and run it on Windows.
 
 Installer behavior:
 
@@ -34,7 +47,8 @@ Installer behavior:
 
 Notes:
 
-- the installer is unsigned, so Windows and SmartScreen warnings are expected
+- the installer itself is still unsigned
+- direct execution of the downloaded installer may trigger Windows or SmartScreen warnings
 - this is normal for the current release and does not indicate malware by itself
 - code signing is not part of the repository yet, so plan for that warning during installation
 - the Start Menu shortcut is created in the current-user Start Menu, not in `ProgramData`
