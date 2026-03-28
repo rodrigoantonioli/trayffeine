@@ -4,9 +4,9 @@ Trayffeine is a small Windows tray application that keeps the computer awake whi
 
 Development happens in WSL, but official Windows installers are produced in GitHub Actions on `windows-latest`.
 
-## Version 1.0.0
+## Version 1.1.0
 
-Trayffeine 1.0.0 is the first stable release. At this point the app provides:
+Trayffeine 1.1.0 is the current stable release. At this point the app provides:
 
 - a tray-only Windows experience with no main window
 - active and inactive tray icons, including a pressed visual state while active
@@ -14,8 +14,9 @@ Trayffeine 1.0.0 is the first stable release. At this point the app provides:
 - automatic shutdown when a timed session expires
 - a single toast notification when a timed session ends
 - double-click on the tray icon to toggle infinite mode
-- persistent language, logging, and keep-awake method preferences
+- persistent language, logging, keep-awake method, and startup preferences
 - persistent restore of infinite mode across launches
+- optional `Start with Windows` from the tray preferences menu
 - configurable keep-awake methods: `Smart`, `Windows API`, `F15`, and `Shift`
 - runtime localization for `pt-BR`, `en`, and `es`
 - rotating log files and support actions from the tray menu
@@ -48,9 +49,9 @@ Installer behavior:
 Notes:
 
 - the installer itself is still unsigned
-- direct execution of the downloaded installer may trigger Windows or SmartScreen warnings
-- this is normal for the current release and does not indicate malware by itself
-- code signing is not part of the repository yet, so plan for that warning during installation
+- `winget` is the preferred install path and avoids most browser-download friction
+- direct execution of the downloaded installer may still trigger Windows or SmartScreen warnings
+- code signing is not part of the repository yet, so keep the unsigned-installer caveat in mind
 - the Start Menu shortcut is created in the current-user Start Menu, not in `ProgramData`
 - searching for `Trayffeine` from the Windows Start menu should find the app normally
 
@@ -86,7 +87,7 @@ Double-click behavior:
 The tray menu is organized into stable sections:
 
 - status rows
-  - `Trayffeine v1.0.0`
+  - `Trayffeine v1.1.0`
   - a stable summary such as `Inactive`, `Active until 14:32`, or `Infinite mode active`
 - primary actions
   - `Infinite mode`
@@ -94,6 +95,7 @@ The tray menu is organized into stable sections:
   - `Stop`
 - `Preferences >`
   - `Keep-awake method >`
+  - `Start with Windows`
   - `Language >`
 - `Support >`
   - `How it works`
@@ -134,10 +136,13 @@ Persisted preferences:
 - language selection
 - detailed logging preference
 - keep-awake method
+- whether Trayffeine should start with Windows
 - whether infinite mode should be restored on next launch
 
 Startup behavior:
 
+- `Start with Windows` is optional and disabled by default
+- when enabled, Trayffeine registers itself in the current-user Windows `Run` key
 - timed sessions never resume after a restart
 - infinite mode can resume if it was active when the app last saved state
 
@@ -146,6 +151,7 @@ First launch defaults, when no settings file exists:
 - infinite mode restored immediately
 - detailed logging enabled
 - keep-awake method set to `Smart`
+- `Start with Windows` disabled
 - language set to `Auto`
 
 ## Localization
@@ -181,6 +187,7 @@ Detailed logging captures useful actions such as:
 - infinite mode toggles
 - language changes
 - keep-awake method changes
+- toggling `Start with Windows`
 - timer expiration
 - opening the logs folder
 - clearing logs
@@ -189,6 +196,7 @@ Support actions:
 
 - `How it works` opens a short help dialog
 - `Detailed logging` enables or disables persistent `INFO` logging
+- `Start with Windows` enables or disables current-user startup from `Preferences`
 - `Open Logs Folder` opens the logs directory
 - `Clear Logs` asks for confirmation, removes the current log and rotated backups, and recreates a fresh current log file
 
@@ -222,9 +230,11 @@ Environment override:
 - `src/trayffeine/app_logging.py`: rotating file logging and cleanup helpers
 - `src/trayffeine/keepawake.py`: stable keep-awake method ids
 - `src/trayffeine/win32_tray.py`: Windows-specific tray wrapper for double-click handling
-- `src/trayffeine/windows.py`: Windows keep-awake backends, dialogs, mutex, shell helpers
+- `src/trayffeine/windows.py`: Windows keep-awake backends, dialogs, mutex, shell helpers, startup registration
 - `packaging/windows/`: PyInstaller spec, build script, Inno Setup installer script
 - `tests/`: unit and smoke-style tests
+- [CONTRIBUTING.md](/home/rodrigoantonioli/trayffeine/CONTRIBUTING.md): contributor workflow and validation notes
+- [docs/ROADMAP.md](/home/rodrigoantonioli/trayffeine/docs/ROADMAP.md): internal release buckets and backlog notes
 - [CHANGELOG.md](/home/rodrigoantonioli/trayffeine/CHANGELOG.md): project history and milestone summary
 
 ## Local Development
@@ -268,15 +278,23 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 1.0.0 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 1.1.0 -Clean
 ```
 
 GitHub Actions:
 
 - `CI` runs on pushes to `main` and on pull requests
+- `Preview Build` runs on pull requests and manual dispatch, building a Windows installer artifact without creating a release
 - `Release` runs only on tags matching `v*`
 - tags matching `v*-beta*` publish prereleases
-- stable tags such as `v1.0.0` publish normal releases
+- stable tags such as `v1.1.0` publish normal releases
+
+Preview test flow:
+
+- open a pull request for the branch
+- wait for the `Preview Build` workflow to finish
+- download the uploaded installer artifact from the workflow run
+- test that installer on Windows before tagging a release
 
 ## Validation
 
@@ -296,6 +314,8 @@ When reporting a bug, include:
 - your Windows version
 - steps to reproduce
 - the contents of `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
+
+Contribution notes live in [CONTRIBUTING.md](/home/rodrigoantonioli/trayffeine/CONTRIBUTING.md).
 
 ## License
 

@@ -45,6 +45,7 @@ class TrayIconController:
         system_locale: LocaleCode,
         initial_language_selection: LanguageSelection | None = None,
         initial_keepawake_method: KeepAwakeMethod = DEFAULT_KEEPAWAKE_METHOD,
+        initial_start_with_windows: bool = False,
         settings_store: SettingsStore | None = None,
         show_help: Callable[[str, str], None] | None = None,
         open_logs_folder: Callable[[], None] | None = None,
@@ -52,6 +53,7 @@ class TrayIconController:
         confirm_clear_logs: Callable[[str, str], bool] | None = None,
         set_detailed_logging_enabled: Callable[[bool], None] | None = None,
         set_keepawake_method: Callable[[KeepAwakeMethod], None] | None = None,
+        set_start_with_windows_enabled: Callable[[bool], None] | None = None,
         detailed_logging_enabled: bool = False,
         detailed_logging_preference: bool | None = None,
         detailed_logging_locked: bool = False,
@@ -67,6 +69,7 @@ class TrayIconController:
         self._confirm_clear_logs_callback = confirm_clear_logs
         self._set_detailed_logging_enabled_callback = set_detailed_logging_enabled
         self._set_keepawake_method_callback = set_keepawake_method
+        self._set_start_with_windows_enabled_callback = set_start_with_windows_enabled
         self._detailed_logging_enabled = detailed_logging_enabled
         self._detailed_logging_preference = (
             detailed_logging_enabled
@@ -74,6 +77,7 @@ class TrayIconController:
             else detailed_logging_preference
         )
         self._detailed_logging_locked = detailed_logging_locked
+        self._start_with_windows_enabled = initial_start_with_windows
         self._help_flow_pending = False
         self._clear_logs_flow_pending = False
         self._service.set_callbacks(
@@ -205,6 +209,14 @@ class TrayIconController:
                 translator.t("tray.menu.keepawake_method"),
                 self._build_keepawake_method_menu(),
             ),
+            MenuItem(
+                translator.t("tray.menu.start_with_windows"),
+                self._on_toggle_start_with_windows,
+                checked=self._static_bool(self._start_with_windows_enabled),
+                enabled=self._static_bool(
+                    self._set_start_with_windows_enabled_callback is not None
+                ),
+            ),
             MenuItem(translator.t("tray.menu.language"), self._build_language_menu()),
         )
 
@@ -320,6 +332,20 @@ class TrayIconController:
 
         self._detailed_logging_enabled = enabled
         self._detailed_logging_preference = enabled
+        self._persist_settings()
+        self._request_refresh()
+
+    def _on_toggle_start_with_windows(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        enabled = not self._start_with_windows_enabled
+        if self._set_start_with_windows_enabled_callback is not None:
+            try:
+                self._set_start_with_windows_enabled_callback(enabled)
+            except Exception:
+                LOGGER.exception("Failed to update start-with-Windows setting")
+                return
+
+        self._start_with_windows_enabled = enabled
+        LOGGER.info("Start with Windows changed from tray menu: %s", enabled)
         self._persist_settings()
         self._request_refresh()
 
@@ -449,6 +475,7 @@ class TrayIconController:
             ),
             detailed_logging_enabled=self._detailed_logging_preference,
             keepawake_method=self._keepawake_method,
+            start_with_windows=self._start_with_windows_enabled,
         )
         self._settings_store.save(settings)
 

@@ -69,6 +69,7 @@ def _run_app(
         confirm_message_box,
         create_keepawake_backend,
         open_path_in_shell,
+        set_start_with_windows_enabled,
         show_info_message_box,
     )
 
@@ -84,6 +85,7 @@ def _run_app(
         system_locale=detect_system_locale(),
         initial_language_selection=settings.language_selection,
         initial_keepawake_method=settings.keepawake_method,
+        initial_start_with_windows=settings.start_with_windows,
         settings_store=settings_store,
         show_help=show_info_message_box,
         open_logs_folder=lambda: _open_logs_folder(log_path, open_path_in_shell),
@@ -93,6 +95,7 @@ def _run_app(
             log_path, enabled
         ),
         set_keepawake_method=lambda method: _set_keepawake_method(service, method),
+        set_start_with_windows_enabled=lambda enabled: set_start_with_windows_enabled(enabled),
         detailed_logging_enabled=detailed_logging_enabled,
         detailed_logging_preference=settings.detailed_logging_enabled,
         detailed_logging_locked=detailed_logging_locked,

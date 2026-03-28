@@ -134,6 +134,7 @@ def test_tray_controller_can_build_menu_with_grouped_entries(monkeypatch) -> Non
 
     preferences_menu = _submenu(controller._icon.menu, "Preferences")
     assert _menu_item(preferences_menu, "Keep-awake method").text == "Keep-awake method"
+    assert _menu_item(preferences_menu, "Start with Windows").text == "Start with Windows"
     assert _menu_item(preferences_menu, "Language").text == "Language"
 
     support_menu = _submenu(controller._icon.menu, "Support")
@@ -370,6 +371,59 @@ def test_tray_controller_exposes_keepawake_method_menu(monkeypatch) -> None:
     assert selected == ["shift"]
     assert controller._keepawake_method == "shift"
     assert settings_store.saved[-1].keepawake_method == "shift"
+
+
+def test_tray_controller_exposes_start_with_windows_toggle(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    toggled: list[bool] = []
+    settings_store = FakeSettingsStore()
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        settings_store=settings_store,
+        initial_start_with_windows=False,
+        set_start_with_windows_enabled=lambda enabled: toggled.append(enabled),
+    )
+
+    preferences_menu = _submenu(controller._icon.menu, "Preferences")
+    startup_item = _menu_item(preferences_menu, "Start with Windows")
+    assert _resolve_menu_flag(startup_item.checked, startup_item) is False
+
+    startup_item.action(None, None)
+
+    assert toggled == [True]
+    assert controller._start_with_windows_enabled is True
+    assert settings_store.saved[-1].start_with_windows is True
+    refreshed_item = _menu_item(
+        _submenu(controller._icon.menu, "Preferences"),
+        "Start with Windows",
+    )
+    assert _resolve_menu_flag(refreshed_item.checked, refreshed_item) is True
+
+
+def test_tray_controller_keeps_start_with_windows_unchecked_on_callback_failure(
+    monkeypatch,
+) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    settings_store = FakeSettingsStore()
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        settings_store=settings_store,
+        initial_start_with_windows=False,
+        set_start_with_windows_enabled=lambda enabled: (_ for _ in ()).throw(
+            OSError("registry failure")
+        ),
+    )
+
+    preferences_menu = _submenu(controller._icon.menu, "Preferences")
+    startup_item = _menu_item(preferences_menu, "Start with Windows")
+    startup_item.action(None, None)
+
+    assert controller._start_with_windows_enabled is False
+    assert settings_store.saved == []
 
 
 def test_tray_controller_disables_detailed_logging_toggle_when_locked(monkeypatch) -> None:
