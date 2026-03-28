@@ -124,7 +124,7 @@ For real tray validation, run the app from a real Windows path.
   - unit and smoke-style coverage for session, presenter, i18n, logging, tray wiring, service behavior, and Windows integration helpers
 
 - `CHANGELOG.md`
-  - milestone summary through `1.1.0`
+  - milestone summary through `1.1.1`
 
 ## Architecture Rules
 
@@ -240,7 +240,7 @@ For changes touching `pystray`, dialogs, or installer behavior, the final confid
 
 ## Release and Versioning
 
-- Project version is currently `1.1.0`.
+- Project version is currently `1.1.1`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -252,7 +252,7 @@ GitHub workflows:
 - `CI` runs on push to `main` and on pull requests
 - `Preview Build` runs on pull requests and manual dispatch, publishing a Windows installer artifact for testing
 - `Release` runs only on tags `v*`
-- stable tags such as `v1.1.0` publish normal releases
+- stable tags such as `v1.1.1` publish normal releases
 - tags matching `v*-beta*` publish GitHub prereleases
 
 If changing packaging or release behavior, verify:

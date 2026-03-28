@@ -10,7 +10,7 @@ GitHub release workflow.
 ## Current Status
 
 - package identifier: `RodrigoAntonioli.Trayffeine`
-- current stable version tracked here: `1.1.0`
+- current stable version tracked here: `1.1.1`
 - stable releases can submit WinGet updates automatically from GitHub Actions
 - beta tags do not submit WinGet updates
 
@@ -29,7 +29,7 @@ releases.
 
 Conditions:
 
-- the tag must be a stable tag such as `v1.1.0`
+- the tag must be a stable tag such as `v1.1.1`
 - beta tags such as `v1.2.0-beta1` skip WinGet submission
 - the repository must define the Actions secret `WINGET_GITHUB_PAT`
 
