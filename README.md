@@ -4,9 +4,9 @@ Trayffeine is a small Windows tray application that keeps the computer awake whi
 
 Development happens in WSL, but official Windows installers are produced in GitHub Actions on `windows-latest`.
 
-## Version 1.1.0
+## Version 1.1.1
 
-Trayffeine 1.1.0 is the current stable release. At this point the app provides:
+Trayffeine 1.1.1 is the current stable release. At this point the app provides:
 
 - a tray-only Windows experience with no main window
 - active and inactive tray icons, including a pressed visual state while active
@@ -87,7 +87,7 @@ Double-click behavior:
 The tray menu is organized into stable sections:
 
 - status rows
-  - `Trayffeine v1.1.0`
+  - `Trayffeine v1.1.1`
   - a stable summary such as `Inactive`, `Active until 14:32`, or `Infinite mode active`
 - primary actions
   - `Infinite mode`
@@ -278,7 +278,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 1.1.0 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 1.1.1 -Clean
 ```
 
 GitHub Actions:
@@ -287,7 +287,7 @@ GitHub Actions:
 - `Preview Build` runs on pull requests and manual dispatch, building a Windows installer artifact without creating a release
 - `Release` runs only on tags matching `v*`
 - tags matching `v*-beta*` publish prereleases
-- stable tags such as `v1.1.0` publish normal releases
+- stable tags such as `v1.1.1` publish normal releases
 
 Preview test flow:
 

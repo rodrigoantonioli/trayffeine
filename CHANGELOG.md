@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1
+
+Hotfix release for Trayffeine.
+
+Highlights:
+
+- reapplies the persisted `Start with Windows` preference during app launch
+- keeps startup registration and the tray checkbox from drifting apart when the Windows `Run` key is removed externally
+- continues launching normally if startup-registration sync fails
+
 ## 1.1.0
 
 Second stable release of Trayffeine.
