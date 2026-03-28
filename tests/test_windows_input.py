@@ -139,13 +139,16 @@ def test_start_with_windows_delete_ignores_missing_value(monkeypatch) -> None:
     assert module.is_start_with_windows_enabled() is False
 
 
-def test_startup_launch_command_uses_python_module_when_not_frozen(monkeypatch) -> None:
+def test_startup_launch_command_uses_pythonw_module_when_not_frozen(monkeypatch) -> None:
     module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
 
-    monkeypatch.setattr(module.sys, "executable", r"C:\Python312\pythonw.exe")
+    monkeypatch.setattr(module.sys, "executable", r"C:\Program Files\Python312\python.exe")
     monkeypatch.delattr(module.sys, "frozen", raising=False)
 
-    assert module.startup_launch_command() == r"C:\Python312\pythonw.exe -m trayffeine"
+    assert (
+        module.startup_launch_command()
+        == r'"C:\Program Files\Python312\pythonw.exe" -m trayffeine'
+    )
 
 
 def _load_windows_module(

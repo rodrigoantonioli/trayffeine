@@ -15,6 +15,8 @@
 #define MyAppPublisher "Rodrigo Antonioli"
 #define MyAppURL "https://github.com/rodrigoantonioli/trayffeine"
 #define MyAppExeName "Trayffeine.exe"
+#define StartupRunKey "Software\Microsoft\Windows\CurrentVersion\Run"
+#define StartupRunValue "Trayffeine"
 
 [Setup]
 AppId={{70B06B9D-D607-4E77-9DC6-3C7C81C6C3D3}
@@ -67,6 +69,11 @@ begin
     ResultCode);
 end;
 
+procedure RemoveStartupRegistration();
+begin
+  RegDeleteValue(HKCU, '{#StartupRunKey}', '{#StartupRunValue}');
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   KillRunningTrayffeine();
@@ -76,5 +83,8 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then
+  begin
     KillRunningTrayffeine();
+    RemoveStartupRegistration();
+  end;
 end;

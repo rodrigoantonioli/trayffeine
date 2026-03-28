@@ -7,7 +7,7 @@ import subprocess
 import sys
 from ctypes import wintypes
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from .keepawake import KeepAwakeMethod
 
@@ -263,7 +263,16 @@ def startup_launch_command() -> str:
     executable = str(Path(sys.executable))
     if getattr(sys, "frozen", False):
         return subprocess.list2cmdline([executable])
-    return subprocess.list2cmdline([executable, "-m", "trayffeine"])
+    return subprocess.list2cmdline([_windowless_python_executable(executable), "-m", "trayffeine"])
+
+
+def _windowless_python_executable(executable: str) -> str:
+    normalized = PureWindowsPath(executable)
+    if normalized.name.lower() == "pythonw.exe":
+        return executable
+    if normalized.suffix.lower() == ".exe" and normalized.stem.lower().startswith("python"):
+        return str(normalized.with_name("pythonw.exe"))
+    return executable
 
 
 def is_start_with_windows_enabled() -> bool:
