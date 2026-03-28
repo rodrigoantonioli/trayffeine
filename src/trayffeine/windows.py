@@ -3,9 +3,11 @@ from __future__ import annotations
 import ctypes
 import logging
 import os
+import subprocess
+import sys
 from ctypes import wintypes
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from .keepawake import KeepAwakeMethod
 
@@ -33,6 +35,8 @@ IDYES = 6
 ES_SYSTEM_REQUIRED = 0x00000001
 ES_DISPLAY_REQUIRED = 0x00000002
 ES_CONTINUOUS = 0x80000000
+RUN_KEY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_VALUE_NAME = "Trayffeine"
 
 
 class MOUSEINPUT(ctypes.Structure):
@@ -253,6 +257,66 @@ def confirm_message_box(title: str, message: str) -> bool:
 
 def open_path_in_shell(path: str | Path) -> None:
     os.startfile(str(path))  # type: ignore[attr-defined]
+
+
+def startup_launch_command() -> str:
+    executable = str(Path(sys.executable))
+    if getattr(sys, "frozen", False):
+        return subprocess.list2cmdline([executable])
+    return subprocess.list2cmdline([_windowless_python_executable(executable), "-m", "trayffeine"])
+
+
+def _windowless_python_executable(executable: str) -> str:
+    normalized = PureWindowsPath(executable)
+    if normalized.name.lower() == "pythonw.exe":
+        return executable
+    if normalized.suffix.lower() == ".exe" and normalized.stem.lower().startswith("python"):
+        return str(normalized.with_name("pythonw.exe"))
+    return executable
+
+
+def is_start_with_windows_enabled() -> bool:
+    winreg = _winreg_module()
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY_PATH) as key:
+            value, _ = winreg.QueryValueEx(key, RUN_VALUE_NAME)
+    except FileNotFoundError:
+        return False
+    return isinstance(value, str) and bool(value.strip())
+
+
+def set_start_with_windows_enabled(enabled: bool) -> None:
+    if enabled:
+        _enable_start_with_windows()
+        return
+    _disable_start_with_windows()
+
+
+def _enable_start_with_windows() -> None:
+    winreg = _winreg_module()
+    command = startup_launch_command()
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY_PATH) as key:
+        winreg.SetValueEx(key, RUN_VALUE_NAME, 0, winreg.REG_SZ, command)
+
+
+def _disable_start_with_windows() -> None:
+    winreg = _winreg_module()
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            RUN_KEY_PATH,
+            0,
+            winreg.KEY_SET_VALUE,
+        ) as key:
+            winreg.DeleteValue(key, RUN_VALUE_NAME)
+    except FileNotFoundError:
+        return
+
+
+def _winreg_module():
+    import importlib
+
+    return importlib.import_module("winreg")
 
 
 @dataclass

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0
+
+Second stable release of Trayffeine.
+
+Highlights:
+
+- added a persistent `Start with Windows` preference backed by the current-user `Run` key
+- kept the auto-start option in the tray `Preferences` menu without adding a main window
+- added `CONTRIBUTING.md` and an internal `docs/ROADMAP.md`
+- refreshed public docs to reflect WinGet availability and the unsigned-installer caveat
+- bumped project, packaging, and WinGet metadata to `1.1.0`
+
 ## 1.0.0
 
 First stable release of Trayffeine.

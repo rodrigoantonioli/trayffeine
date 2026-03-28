@@ -110,6 +110,47 @@ def test_smart_backend_falls_back_in_fixed_order_on_technical_failure(monkeypatc
     ]
 
 
+def test_start_with_windows_writes_run_key(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+    fake_winreg = _install_fake_winreg(monkeypatch)
+    monkeypatch.setattr(
+        module,
+        "startup_launch_command",
+        lambda: '"C:\\Program Files\\Trayffeine.exe"',
+    )
+
+    module.set_start_with_windows_enabled(True)
+
+    assert fake_winreg.values[module.RUN_VALUE_NAME] == '"C:\\Program Files\\Trayffeine.exe"'
+    assert module.is_start_with_windows_enabled() is True
+
+
+def test_start_with_windows_delete_ignores_missing_value(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+    fake_winreg = _install_fake_winreg(monkeypatch)
+
+    module.set_start_with_windows_enabled(False)
+    assert fake_winreg.values == {}
+
+    fake_winreg.values[module.RUN_VALUE_NAME] = '"C:\\Program Files\\Trayffeine.exe"'
+    module.set_start_with_windows_enabled(False)
+
+    assert fake_winreg.values == {}
+    assert module.is_start_with_windows_enabled() is False
+
+
+def test_startup_launch_command_uses_pythonw_module_when_not_frozen(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+
+    monkeypatch.setattr(module.sys, "executable", r"C:\Program Files\Python312\python.exe")
+    monkeypatch.delattr(module.sys, "frozen", raising=False)
+
+    assert (
+        module.startup_launch_command()
+        == r'"C:\Program Files\Python312\pythonw.exe" -m trayffeine'
+    )
+
+
 def _load_windows_module(
     monkeypatch,
     *,
@@ -141,3 +182,48 @@ def _load_windows_module(
     sys.modules.pop("trayffeine.windows", None)
     module = importlib.import_module("trayffeine.windows")
     return module, send_input, set_thread_execution_state
+
+
+def _install_fake_winreg(monkeypatch):
+    class FakeKey:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:  # noqa: ANN001
+            return None
+
+    class FakeWinreg:
+        HKEY_CURRENT_USER = object()
+        KEY_SET_VALUE = 0x0002
+        REG_SZ = 1
+
+        def __init__(self) -> None:
+            self.values: dict[str, str] = {}
+
+        def CreateKey(self, root, path):  # noqa: ANN001, N802
+            assert root is self.HKEY_CURRENT_USER
+            assert path == r"Software\Microsoft\Windows\CurrentVersion\Run"
+            return FakeKey()
+
+        def OpenKey(self, root, path, reserved=0, access=None):  # noqa: ANN001, N802
+            assert root is self.HKEY_CURRENT_USER
+            assert path == r"Software\Microsoft\Windows\CurrentVersion\Run"
+            return FakeKey()
+
+        def SetValueEx(self, key, name, reserved, kind, value):  # noqa: ANN001, N802
+            assert kind == self.REG_SZ
+            self.values[name] = value
+
+        def QueryValueEx(self, key, name):  # noqa: ANN001, N802
+            if name not in self.values:
+                raise FileNotFoundError(name)
+            return self.values[name], self.REG_SZ
+
+        def DeleteValue(self, key, name):  # noqa: ANN001, N802
+            if name not in self.values:
+                raise FileNotFoundError(name)
+            del self.values[name]
+
+    fake_winreg = FakeWinreg()
+    monkeypatch.setitem(sys.modules, "winreg", fake_winreg)
+    return fake_winreg

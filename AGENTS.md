@@ -20,6 +20,7 @@ Current product behavior:
 - persistent language selection
 - persistent keep-awake method selection
 - supported keep-awake methods: `smart`, `execution-state`, `f15`, `shift`
+- persistent `Start with Windows` toggle
 - persistent detailed logging toggle
 - support actions for help, opening logs, and clearing logs
 - persistent restore of infinite mode, while timed sessions always restart inactive
@@ -97,7 +98,7 @@ For real tray validation, run the app from a real Windows path.
 
 - `src/trayffeine/settings.py`
   - JSON settings persistence
-  - stores language, infinite restore, detailed logging, and keep-awake method
+  - stores language, infinite restore, detailed logging, keep-awake method, and startup preference
   - missing settings file is treated as first launch
 
 - `src/trayffeine/win32_tray.py`
@@ -112,6 +113,7 @@ For real tray validation, run the app from a real Windows path.
   - mutex
   - dialogs
   - shell-open helper
+  - current-user startup registration via the Windows `Run` key
 
 - `packaging/windows/`
   - `trayffeine.spec`: PyInstaller bundle definition
@@ -122,7 +124,7 @@ For real tray validation, run the app from a real Windows path.
   - unit and smoke-style coverage for session, presenter, i18n, logging, tray wiring, service behavior, and Windows integration helpers
 
 - `CHANGELOG.md`
-  - milestone summary from the start of the project through `1.0.0`
+  - milestone summary through `1.1.0`
 
 ## Architecture Rules
 
@@ -161,12 +163,14 @@ Stored settings currently include:
 - `restore_infinite`
 - `detailed_logging_enabled`
 - `keepawake_method`
+- `start_with_windows`
 
 Current first-run defaults:
 
 - `restore_infinite = true`
 - `detailed_logging_enabled = true`
 - `keepawake_method = smart`
+- `start_with_windows = false`
 - `language_selection = auto`
 
 Timed sessions must never resume after restart.
@@ -196,6 +200,7 @@ Examples of useful `INFO` events:
 - infinite mode enable or disable
 - language change
 - keep-awake method change
+- start-with-Windows toggle
 - timer expiration
 - opening logs folder
 - toggling detailed logging
@@ -235,7 +240,7 @@ For changes touching `pystray`, dialogs, or installer behavior, the final confid
 
 ## Release and Versioning
 
-- Project version is currently `1.0.0`.
+- Project version is currently `1.1.0`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -245,8 +250,9 @@ For changes touching `pystray`, dialogs, or installer behavior, the final confid
 GitHub workflows:
 
 - `CI` runs on push to `main` and on pull requests
+- `Preview Build` runs on pull requests and manual dispatch, publishing a Windows installer artifact for testing
 - `Release` runs only on tags `v*`
-- stable tags such as `v1.0.0` publish normal releases
+- stable tags such as `v1.1.0` publish normal releases
 - tags matching `v*-beta*` publish GitHub prereleases
 
 If changing packaging or release behavior, verify:

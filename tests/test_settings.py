@@ -13,6 +13,7 @@ def test_settings_store_round_trips_manual_locale_and_restore_flag(tmp_path) -> 
         restore_infinite=True,
         detailed_logging_enabled=True,
         keepawake_method="shift",
+        start_with_windows=True,
     )
 
     store.save(expected)
@@ -31,6 +32,7 @@ def test_settings_store_defaults_to_auto_for_invalid_payload(tmp_path) -> None:
     assert loaded.restore_infinite is False
     assert loaded.detailed_logging_enabled is False
     assert loaded.keepawake_method == "smart"
+    assert loaded.start_with_windows is False
 
 
 def test_settings_store_defaults_when_file_is_missing(tmp_path) -> None:
@@ -50,3 +52,4 @@ def test_settings_store_defaults_keepawake_method_when_field_is_missing(tmp_path
     loaded = SettingsStore(settings_path).load()
 
     assert loaded.keepawake_method == "smart"
+    assert loaded.start_with_windows is False

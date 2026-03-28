@@ -29,6 +29,7 @@ class FakeSettingsStore:
             language_selection=LanguageSelection.explicit("es"),
             restore_infinite=True,
             keepawake_method="shift",
+            start_with_windows=True,
         )
 
     def load(self) -> StoredSettings:
@@ -75,6 +76,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
+    fake_windows.set_start_with_windows_enabled = lambda enabled: None
     fake_windows.show_info_message_box = lambda title, message: None
 
     monkeypatch.setattr(trayffeine.i18n, "detect_system_locale", lambda: "en")
@@ -97,6 +99,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
                 restore_infinite=True,
                 detailed_logging_enabled=True,
                 keepawake_method="shift",
+                start_with_windows=True,
             )
         ),
     )
@@ -124,6 +127,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     assert service.backend == "backend:shift"
     assert tray.kwargs["initial_language_selection"] == LanguageSelection.explicit("es")
     assert tray.kwargs["initial_keepawake_method"] == "shift"
+    assert tray.kwargs["initial_start_with_windows"] is True
     assert callable(tray.kwargs["show_help"])
     assert callable(tray.kwargs["open_logs_folder"])
     assert tray.kwargs["detailed_logging_enabled"] is True
@@ -132,6 +136,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     assert callable(tray.kwargs["clear_logs"])
     assert callable(tray.kwargs["set_detailed_logging_enabled"])
     assert callable(tray.kwargs["set_keepawake_method"])
+    assert callable(tray.kwargs["set_start_with_windows_enabled"])
 
 
 def test_run_app_logs_and_shows_dialog_on_unhandled_exception(monkeypatch, tmp_path) -> None:
@@ -150,6 +155,7 @@ def test_run_app_logs_and_shows_dialog_on_unhandled_exception(monkeypatch, tmp_p
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.show_message_box = lambda title, message: dialog_calls.append((title, message))
     fake_windows.open_path_in_shell = lambda path: None
+    fake_windows.set_start_with_windows_enabled = lambda enabled: None
     fake_windows.show_info_message_box = lambda title, message: None
 
     monkeypatch.setattr(
@@ -206,6 +212,7 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
     fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
+    fake_windows.set_start_with_windows_enabled = lambda enabled: None
     fake_windows.show_info_message_box = lambda title, message: None
 
     monkeypatch.setenv("TRAYFFEINE_LOG_LEVEL", "INFO")
@@ -229,6 +236,7 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
                 restore_infinite=False,
                 detailed_logging_enabled=False,
                 keepawake_method="execution-state",
+                start_with_windows=False,
             )
         ),
     )
