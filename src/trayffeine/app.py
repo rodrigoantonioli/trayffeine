@@ -78,6 +78,7 @@ def _run_app(
         return
 
     service = TrayffeineService(backend=create_keepawake_backend(settings.keepawake_method))
+    _sync_start_with_windows_setting(settings.start_with_windows, set_start_with_windows_enabled)
     if settings.restore_infinite:
         service.activate(None, "infinite")
     tray = TrayIconController(
@@ -131,6 +132,13 @@ def _set_keepawake_method(service, method) -> None:  # noqa: ANN001
     from .windows import create_keepawake_backend
 
     service.set_backend(create_keepawake_backend(method))
+
+
+def _sync_start_with_windows_setting(enabled: bool, set_start_with_windows_enabled) -> None:  # noqa: ANN001
+    try:
+        set_start_with_windows_enabled(enabled)
+    except Exception:
+        LOGGER.exception("Failed to sync start-with-Windows setting at startup")
 
 
 def _clear_logs(log_path: Path) -> None:

@@ -71,12 +71,13 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     import trayffeine.tray
 
     created: dict[str, object] = {}
+    startup_calls: list[bool] = []
     fake_windows = ModuleType("trayffeine.windows")
     fake_windows.SingleInstanceGuard = FakeGuard
     fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
-    fake_windows.set_start_with_windows_enabled = lambda enabled: None
+    fake_windows.set_start_with_windows_enabled = lambda enabled: startup_calls.append(enabled)
     fake_windows.show_info_message_box = lambda title, message: None
 
     monkeypatch.setattr(trayffeine.i18n, "detect_system_locale", lambda: "en")
@@ -125,6 +126,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
 
     assert service.activations == [(None, "infinite")]
     assert service.backend == "backend:shift"
+    assert startup_calls == [True]
     assert tray.kwargs["initial_language_selection"] == LanguageSelection.explicit("es")
     assert tray.kwargs["initial_keepawake_method"] == "shift"
     assert tray.kwargs["initial_start_with_windows"] is True
@@ -262,6 +264,71 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
     assert tray.kwargs["detailed_logging_enabled"] is True
     assert tray.kwargs["detailed_logging_preference"] is False
     assert tray.kwargs["detailed_logging_locked"] is True
+
+
+def test_run_app_continues_when_start_with_windows_sync_fails(monkeypatch) -> None:
+    import trayffeine.app_logging
+    import trayffeine.i18n
+    import trayffeine.service
+    import trayffeine.settings
+    import trayffeine.tray
+
+    created: dict[str, object] = {}
+    startup_calls: list[bool] = []
+    fake_windows = ModuleType("trayffeine.windows")
+    fake_windows.SingleInstanceGuard = FakeGuard
+    fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
+    fake_windows.confirm_message_box = lambda title, message: True
+    fake_windows.open_path_in_shell = lambda path: None
+    fake_windows.set_start_with_windows_enabled = lambda enabled: startup_calls.append(enabled) or (
+        _ for _ in ()
+    ).throw(OSError("registry unavailable"))
+    fake_windows.show_info_message_box = lambda title, message: None
+
+    monkeypatch.setattr(trayffeine.i18n, "detect_system_locale", lambda: "en")
+    monkeypatch.setattr(
+        trayffeine.app_logging,
+        "configure_logging",
+        lambda *args, **kwargs: Path("/tmp/trayffeine.log"),
+    )
+    monkeypatch.setattr(
+        trayffeine.app_logging,
+        "default_log_path",
+        lambda: Path("/tmp/trayffeine.log"),
+    )
+    monkeypatch.setattr(
+        trayffeine.settings,
+        "SettingsStore",
+        lambda: FakeSettingsStore(
+            StoredSettings(
+                language_selection=LanguageSelection.auto(),
+                restore_infinite=False,
+                detailed_logging_enabled=False,
+                keepawake_method="execution-state",
+                start_with_windows=True,
+            )
+        ),
+    )
+    monkeypatch.setitem(sys.modules, "trayffeine.windows", fake_windows)
+
+    def create_service(*args, **kwargs):  # noqa: ANN002, ANN003
+        service = FakeService(*args, **kwargs)
+        created["service"] = service
+        return service
+
+    def create_tray(service, **kwargs):  # noqa: ANN001, ANN003
+        tray = FakeTray(service, **kwargs)
+        created["tray"] = tray
+        return tray
+
+    monkeypatch.setattr(trayffeine.service, "TrayffeineService", create_service)
+    monkeypatch.setattr(trayffeine.tray, "TrayIconController", create_tray)
+
+    run_app()
+
+    assert startup_calls == [True]
+    assert created["service"].backend == "backend:execution-state"
+    assert created["tray"].kwargs["initial_start_with_windows"] is True
 
 
 def test_clear_logs_recreates_a_fresh_log_file(monkeypatch, tmp_path) -> None:
