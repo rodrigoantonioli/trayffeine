@@ -29,7 +29,7 @@ Current product behavior:
 
 ## Environment Model
 
-- Development and editing happen in WSL.
+- Development and editing can happen in Windows or WSL.
 - Official Windows installers are built in GitHub Actions on `windows-latest`.
 - Do not treat WSL as the place to produce final Windows distributables for users.
 - Python target is `3.13`.
@@ -266,7 +266,7 @@ If changing packaging or release behavior, verify:
 - No signing pipeline is integrated yet.
 - SmartScreen reputation is not solved in the current repo state.
 - Installer localization is still separate from runtime localization.
-- The app is Windows-only at runtime even though development happens in WSL.
+- The app is Windows-only at runtime even though development may happen in Windows or WSL.
 - Teams or similar presence behavior is not guaranteed by the keep-awake methods.
 
 ## Practical Guidance For Future Agents
