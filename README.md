@@ -233,9 +233,9 @@ Environment override:
 - `src/trayffeine/windows.py`: Windows keep-awake backends, dialogs, mutex, shell helpers, startup registration
 - `packaging/windows/`: PyInstaller spec, build script, Inno Setup installer script
 - `tests/`: unit and smoke-style tests
-- [CONTRIBUTING.md](/home/rodrigoantonioli/trayffeine/CONTRIBUTING.md): contributor workflow and validation notes
-- [docs/ROADMAP.md](/home/rodrigoantonioli/trayffeine/docs/ROADMAP.md): internal release buckets and backlog notes
-- [CHANGELOG.md](/home/rodrigoantonioli/trayffeine/CHANGELOG.md): project history and milestone summary
+- [CONTRIBUTING.md](CONTRIBUTING.md): contributor workflow and validation notes
+- [docs/ROADMAP.md](docs/ROADMAP.md): internal release buckets and backlog notes
+- [CHANGELOG.md](CHANGELOG.md): project history and milestone summary
 
 ## Local Development
 
@@ -244,7 +244,7 @@ Environment override:
 Use WSL for editing, linting, and tests:
 
 ```bash
-python3.12 -m venv .venv
+python3.13 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .[dev]
 python scripts/generate_assets.py
@@ -257,7 +257,7 @@ pytest
 Run the app from a real Windows path when you need interactive tray validation:
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[dev,build]
 python scripts\generate_assets.py
@@ -274,7 +274,7 @@ The release workflow builds:
 Manual Windows packaging:
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
@@ -315,8 +315,8 @@ When reporting a bug, include:
 - steps to reproduce
 - the contents of `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
 
-Contribution notes live in [CONTRIBUTING.md](/home/rodrigoantonioli/trayffeine/CONTRIBUTING.md).
+Contribution notes live in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Trayffeine is available under the [MIT License](/home/rodrigoantonioli/trayffeine/LICENSE).
+Trayffeine is available under the [MIT License](LICENSE).

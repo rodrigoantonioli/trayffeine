@@ -6,7 +6,7 @@ Keep that split in mind when changing runtime behavior, packaging, or tray UX.
 ## Local Setup
 
 ```bash
-python3.12 -m venv .venv
+python3.13 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .[dev]
 python scripts/generate_assets.py
@@ -15,7 +15,7 @@ python scripts/generate_assets.py
 For packaging work on Windows:
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[dev,build]
 python scripts\generate_assets.py

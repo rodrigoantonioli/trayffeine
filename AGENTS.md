@@ -32,12 +32,12 @@ Current product behavior:
 - Development and editing happen in WSL.
 - Official Windows installers are built in GitHub Actions on `windows-latest`.
 - Do not treat WSL as the place to produce final Windows distributables for users.
-- Python target is `3.12`.
+- Python target is `3.13`.
 
 Recommended local loop:
 
 ```bash
-python3.12 -m venv .venv
+python3.13 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .[dev]
 python scripts/generate_assets.py
