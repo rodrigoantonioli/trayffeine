@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.2
+
+Maintenance release for Trayffeine.
+
+Highlights:
+
+- moves local development, CI, preview builds, and release builds to Python 3.13
+- fixes the entrypoint smoke test so it does not launch the real tray app on Windows
+- makes the Windows build script find per-user Inno Setup installations outside `PATH`
+- refreshes generated tray assets and fixes stale README links
+
 ## 1.1.1
 
 Hotfix release for Trayffeine.
