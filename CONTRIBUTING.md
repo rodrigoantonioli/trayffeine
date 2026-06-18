@@ -1,9 +1,12 @@
 # Contributing
 
-Trayffeine is developed in WSL, but the real product is a Windows tray app.
-Keep that split in mind when changing runtime behavior, packaging, or tray UX.
+Trayffeine can be developed from Windows or WSL, but the real product is a
+Windows tray app. Keep that split in mind when changing runtime behavior,
+packaging, or tray UX.
 
 ## Local Setup
+
+For WSL or Linux-style shells:
 
 ```bash
 python3.13 -m venv .venv
@@ -12,7 +15,7 @@ python -m pip install -e .[dev]
 python scripts/generate_assets.py
 ```
 
-For packaging work on Windows:
+For Windows PowerShell and packaging work:
 
 ```powershell
 py -3.13 -m venv .venv
@@ -30,6 +33,9 @@ Before considering a change complete, run:
 ruff check .
 pytest
 ```
+
+On Windows PowerShell, use `.venv\Scripts\Activate.ps1` before running the same
+`ruff check .` and `pytest` commands.
 
 These checks do not prove real tray behavior on Windows. If you touch
 `pystray`, dialogs, packaging, notifications, or startup integration, do a real
