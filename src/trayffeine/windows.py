@@ -34,6 +34,7 @@ MB_YESNO = 0x00000004
 IDYES = 6
 CF_UNICODETEXT = 13
 GMEM_MOVEABLE = 0x0002
+HWND_MESSAGE = wintypes.HWND(-3)
 ES_SYSTEM_REQUIRED = 0x00000001
 ES_DISPLAY_REQUIRED = 0x00000002
 ES_CONTINUOUS = 0x80000000
@@ -287,6 +288,8 @@ def copy_text_to_clipboard(text: str) -> None:
     user32.SetClipboardData.restype = ctypes.c_void_p
     user32.CloseClipboard.argtypes = ()
     user32.CloseClipboard.restype = wintypes.BOOL
+    user32.DestroyWindow.argtypes = (wintypes.HWND,)
+    user32.DestroyWindow.restype = wintypes.BOOL
 
     buffer = ctypes.create_unicode_buffer(text)
     byte_count = ctypes.sizeof(buffer)
@@ -305,11 +308,14 @@ def copy_text_to_clipboard(text: str) -> None:
     finally:
         kernel32.GlobalUnlock(handle)
 
-    if not user32.OpenClipboard(None):
-        error_code = ctypes.get_last_error()
-        raise OSError(error_code, "OpenClipboard failed")
+    owner_window = _create_clipboard_owner_window()
+    clipboard_opened = False
 
     try:
+        if not user32.OpenClipboard(owner_window):
+            error_code = ctypes.get_last_error()
+            raise OSError(error_code, "OpenClipboard failed")
+        clipboard_opened = True
         if not user32.EmptyClipboard():
             error_code = ctypes.get_last_error()
             raise OSError(error_code, "EmptyClipboard failed")
@@ -317,7 +323,46 @@ def copy_text_to_clipboard(text: str) -> None:
             error_code = ctypes.get_last_error()
             raise OSError(error_code, "SetClipboardData failed")
     finally:
-        user32.CloseClipboard()
+        if clipboard_opened:
+            user32.CloseClipboard()
+        user32.DestroyWindow(owner_window)
+
+
+def _create_clipboard_owner_window() -> wintypes.HWND:
+    user32.CreateWindowExW.argtypes = (
+        DWORD,
+        wintypes.LPCWSTR,
+        wintypes.LPCWSTR,
+        DWORD,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.HWND,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+    )
+    user32.CreateWindowExW.restype = wintypes.HWND
+
+    owner_window = user32.CreateWindowExW(
+        0,
+        "STATIC",
+        "Trayffeine Clipboard Owner",
+        0,
+        0,
+        0,
+        0,
+        0,
+        HWND_MESSAGE,
+        None,
+        None,
+        None,
+    )
+    if not owner_window:
+        error_code = ctypes.get_last_error()
+        raise OSError(error_code, "CreateWindowExW failed")
+    return owner_window
 
 
 def open_path_in_shell(path: str | Path) -> None:
