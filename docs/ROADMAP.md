@@ -10,14 +10,23 @@ Current release bucket:
 - add public contributor guidance
 - refresh release and WinGet docs for the current repository state
 
-## v1.2
+## v1.2.0
+
+Release bucket:
+
+- show which keep-awake method is actually active when `Smart` falls back
+- add persistent presence compatibility mode that uses `F15` as the effective method
+- add a `Copy diagnostics` tray action with version, language, session, methods, settings path, and log path
+- reorganize the native tray menu around compact status, preferences, and support sections
+- document when Trayffeine helps with sleep prevention versus app-presence expectations
+- document diagnostics and support-reporting guidance
+
+## v1.3
 
 Next product and repo improvements under consideration:
 
-- show which keep-awake method is actually active when `Smart` falls back
-- add a `Copy diagnostics` tray action with version, language, active method, and log path
 - add issue templates plus a screenshot or GIF to the public repo
-- document better when Trayffeine helps with sleep prevention versus app-presence expectations
+- consider a manual "test keep-awake methods" diagnostic flow if support data shows it is needed
 
 ## v2.0
 

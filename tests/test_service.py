@@ -8,12 +8,13 @@ from trayffeine.service import TrayffeineService
 
 
 class BackendSpy:
-    def __init__(self) -> None:
+    def __init__(self, *, effective_method: str | None = None) -> None:
         self.start_calls = 0
         self.send_calls = 0
         self.stop_calls = 0
         self.start_event = threading.Event()
         self.stop_event = threading.Event()
+        self.effective_method = effective_method
 
     def on_session_start(self) -> None:
         self.start_calls += 1
@@ -112,6 +113,18 @@ def test_service_set_backend_restarts_active_session() -> None:
     assert first_backend.stop_calls == 1
     assert second_backend.start_calls == 1
     assert second_backend.stop_calls == 1
+
+
+def test_service_snapshot_includes_effective_keepawake_method() -> None:
+    backend = BackendSpy(effective_method="f15")
+    service = TrayffeineService(backend=backend)
+
+    try:
+        snapshot = service.snapshot()
+    finally:
+        service.quit()
+
+    assert snapshot.effective_keepawake_method == "f15"
 
 
 def test_service_quit_stops_active_backend() -> None:

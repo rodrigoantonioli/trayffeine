@@ -19,6 +19,7 @@ def first_run_settings() -> StoredSettings:
         detailed_logging_enabled=True,
         keepawake_method=DEFAULT_KEEPAWAKE_METHOD,
         start_with_windows=False,
+        presence_compatibility_enabled=False,
     )
 
 
@@ -29,6 +30,7 @@ class StoredSettings:
     detailed_logging_enabled: bool = False
     keepawake_method: KeepAwakeMethod = DEFAULT_KEEPAWAKE_METHOD
     start_with_windows: bool = False
+    presence_compatibility_enabled: bool = False
 
 
 class SettingsStore:
@@ -75,6 +77,7 @@ def _serialize_settings(settings: StoredSettings) -> dict[str, object]:
         "detailed_logging_enabled": settings.detailed_logging_enabled,
         "keepawake_method": settings.keepawake_method,
         "start_with_windows": settings.start_with_windows,
+        "presence_compatibility_enabled": settings.presence_compatibility_enabled,
     }
 
 
@@ -86,6 +89,9 @@ def _deserialize_settings(payload: object) -> StoredSettings:
     detailed_logging_enabled = bool(payload.get("detailed_logging_enabled", False))
     keepawake_method = coerce_keepawake_method(payload.get("keepawake_method"))
     start_with_windows = bool(payload.get("start_with_windows", False))
+    presence_compatibility_enabled = bool(
+        payload.get("presence_compatibility_enabled", False)
+    )
     raw_language = payload.get("language_selection")
     language_selection = _deserialize_language_selection(raw_language)
     return StoredSettings(
@@ -94,6 +100,7 @@ def _deserialize_settings(payload: object) -> StoredSettings:
         detailed_logging_enabled=detailed_logging_enabled,
         keepawake_method=keepawake_method,
         start_with_windows=start_with_windows,
+        presence_compatibility_enabled=presence_compatibility_enabled,
     )
 
 

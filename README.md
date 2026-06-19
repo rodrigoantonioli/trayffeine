@@ -4,9 +4,9 @@ Trayffeine is a small Windows tray application that keeps the computer awake whi
 
 Development can happen in Windows or WSL, but official Windows installers are produced in GitHub Actions on `windows-latest`.
 
-## Version 1.1.2
+## Version 1.2.0
 
-Trayffeine 1.1.2 is the current stable release. At this point the app provides:
+Trayffeine 1.2.0 is the current stable release. At this point the app provides:
 
 - a tray-only Windows experience with no main window
 - active and inactive tray icons, including a pressed visual state while active
@@ -14,10 +14,13 @@ Trayffeine 1.1.2 is the current stable release. At this point the app provides:
 - automatic shutdown when a timed session expires
 - a single toast notification when a timed session ends
 - double-click on the tray icon to toggle infinite mode
-- persistent language, logging, keep-awake method, and startup preferences
+- persistent language, logging, keep-awake method, presence compatibility, and startup preferences
 - persistent restore of infinite mode across launches
 - optional `Start with Windows` from the tray preferences menu
 - configurable keep-awake methods: `Smart`, `Windows API`, `F15`, and `Shift`
+- a presence compatibility mode that uses `F15` as a best-effort signal for apps such as Teams
+- configured and effective keep-awake method summaries in the tray menu
+- copyable diagnostics for support
 - runtime localization for `pt-BR`, `en`, and `es`
 - rotating log files and support actions from the tray menu
 - a per-user Windows installer built with PyInstaller and Inno Setup
@@ -87,17 +90,20 @@ Double-click behavior:
 The tray menu is organized into stable sections:
 
 - status rows
-  - `Trayffeine v1.1.2`
+  - `Trayffeine v1.2.0`
   - a stable summary such as `Inactive`, `Active until 14:32`, or `Infinite mode active`
+  - the configured or effective keep-awake method, such as `Method: Smart -> Windows API`
 - primary actions
   - `Infinite mode`
   - `Activate for >`
   - `Stop`
 - `Preferences >`
+  - `Presence compatibility`
   - `Keep-awake method >`
   - `Start with Windows`
   - `Language >`
 - `Support >`
+  - `Copy diagnostics`
   - `How it works`
   - `Detailed logging`
   - `Open Logs Folder`
@@ -127,6 +133,38 @@ Notes:
 - if your main goal is preventing sleep/display idle, `Windows API` is the strongest option
 - if your main goal is presence-style activity in apps, `F15` may work better depending on the environment
 
+## Presence Compatibility
+
+`Presence compatibility` is a persistent preference for environments where an app reacts better to lightweight keyboard activity than to the native Windows execution-state API.
+
+When enabled:
+
+- Trayffeine preserves your normal keep-awake method selection
+- the effective keep-awake method becomes `F15`
+- the tray menu reports this explicitly, for example `Presence compatibility: F15`
+- turning the preference off restores the normal saved method immediately
+
+This is intentionally best effort. It can help apps that observe activity-like input, but it does not integrate with Teams and does not guarantee a Teams `Available` status. Teams and similar apps may also consider calendar state, app focus, lock state, device activity, meeting/call status, mobile clients, and organization-controlled behavior.
+
+Recommended guidance:
+
+- use `Windows API` when the goal is preventing sleep or display idle
+- try `Presence compatibility` when an app appears to ignore sleep-prevention signals but reacts to activity-like input
+- leave the normal method on `Smart` if you want Trayffeine to use the strongest sleep-prevention path when presence compatibility is off
+
+## Diagnostics
+
+`Support > Copy diagnostics` copies a short support bundle to the clipboard. It is stable English text so it can be pasted into GitHub issues, support messages, or release test notes regardless of the selected UI language.
+
+Diagnostics include:
+
+- Trayffeine version
+- language selection and effective locale
+- current session summary
+- configured and effective keep-awake methods
+- presence compatibility, detailed logging, and Start with Windows states
+- settings and log file paths
+
 ## Preferences and Persistence
 
 Trayffeine persists settings in `%LOCALAPPDATA%\Trayffeine\settings.json`.
@@ -136,6 +174,7 @@ Persisted preferences:
 - language selection
 - detailed logging preference
 - keep-awake method
+- presence compatibility mode
 - whether Trayffeine should start with Windows
 - whether infinite mode should be restored on next launch
 
@@ -151,6 +190,7 @@ First launch defaults, when no settings file exists:
 - infinite mode restored immediately
 - detailed logging enabled
 - keep-awake method set to `Smart`
+- presence compatibility disabled
 - `Start with Windows` disabled
 - language set to `Auto`
 
@@ -187,6 +227,7 @@ Detailed logging captures useful actions such as:
 - infinite mode toggles
 - language changes
 - keep-awake method changes
+- presence compatibility toggles
 - toggling `Start with Windows`
 - timer expiration
 - opening the logs folder
@@ -194,6 +235,7 @@ Detailed logging captures useful actions such as:
 
 Support actions:
 
+- `Copy diagnostics` copies version, language, session, method, preference, settings path, and log path information to the clipboard
 - `How it works` opens a short help dialog
 - `Detailed logging` enables or disables persistent `INFO` logging
 - `Start with Windows` enables or disables current-user startup from `Preferences`
@@ -216,6 +258,7 @@ Environment override:
 - SmartScreen reputation is not solved in this repository
 - the app does not bypass `Win + L`, corporate lock policies, or other enforced security controls
 - Teams or similar presence indicators are not guaranteed, because they do not depend only on Windows idle state
+- presence compatibility is an app-activity compatibility mode, not a Teams integration
 - tray behavior is partially unit-tested, but final confidence for UI behavior still comes from real Windows validation
 
 ## Project Layout
@@ -225,6 +268,7 @@ Environment override:
 - `src/trayffeine/service.py`: background worker, timer expiration, keep-awake cadence
 - `src/trayffeine/session.py`: session state and preset timing
 - `src/trayffeine/presenter.py`: tooltip, summaries, and notification text assembly
+- `src/trayffeine/diagnostics.py`: stable support diagnostics text
 - `src/trayffeine/i18n.py`: runtime localization
 - `src/trayffeine/settings.py`: persisted settings model and JSON storage
 - `src/trayffeine/app_logging.py`: rotating file logging and cleanup helpers
@@ -278,7 +322,7 @@ py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .[build]
 python scripts\generate_assets.py
-powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 1.1.2 -Clean
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 1.2.0 -Clean
 ```
 
 GitHub Actions:
@@ -287,7 +331,7 @@ GitHub Actions:
 - `Preview Build` runs on pull requests and manual dispatch, building a Windows installer artifact without creating a release
 - `Release` runs only on tags matching `v*`
 - tags matching `v*-beta*` publish prereleases
-- stable tags such as `v1.1.2` publish normal releases
+- stable tags such as `v1.2.0` publish normal releases
 
 Preview test flow:
 
@@ -313,6 +357,7 @@ When reporting a bug, include:
 - the exact Trayffeine version
 - your Windows version
 - steps to reproduce
+- the text from `Support > Copy diagnostics`
 - the contents of `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
 
 Contribution notes live in [CONTRIBUTING.md](CONTRIBUTING.md).

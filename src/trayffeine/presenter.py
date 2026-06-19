@@ -35,10 +35,23 @@ def build_status_entries(
     mode: SessionMode,
     now: datetime,
     translator: Translator,
+    *,
+    configured_method: KeepAwakeMethod = "smart",
+    effective_method: KeepAwakeMethod | None = None,
+    presence_compatibility_enabled: bool = False,
 ) -> tuple[InfoEntry, ...]:
     return (
         InfoEntry(key="header", text=translator.t("tray.menu.header", version=__version__)),
         InfoEntry(key="summary", text=menu_summary_text(mode, now, translator)),
+        InfoEntry(
+            key="method",
+            text=method_status_text(
+                configured_method=configured_method,
+                effective_method=effective_method,
+                presence_compatibility_enabled=presence_compatibility_enabled,
+                translator=translator,
+            ),
+        ),
     )
 
 
@@ -111,6 +124,32 @@ def build_keepawake_method_menu_entries(
         )
         for method in SUPPORTED_KEEPAWAKE_METHODS
     )
+
+
+def localized_keepawake_method(method: KeepAwakeMethod, translator: Translator) -> str:
+    return translator.t(f"tray.keepawake_method.{method}")
+
+
+def method_status_text(
+    *,
+    configured_method: KeepAwakeMethod,
+    effective_method: KeepAwakeMethod | None,
+    presence_compatibility_enabled: bool,
+    translator: Translator,
+) -> str:
+    effective = effective_method or configured_method
+    effective_text = localized_keepawake_method(effective, translator)
+    if presence_compatibility_enabled:
+        return translator.t("tray.status.presence_compatibility", method=effective_text)
+
+    configured_text = localized_keepawake_method(configured_method, translator)
+    if effective != configured_method:
+        return translator.t(
+            "tray.status.method_effective",
+            configured=configured_text,
+            effective=effective_text,
+        )
+    return translator.t("tray.status.method", method=configured_text)
 
 
 def timer_finished_notification(translator: Translator) -> tuple[str, str]:

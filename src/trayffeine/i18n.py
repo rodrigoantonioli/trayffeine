@@ -27,8 +27,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.preferences": "Preferences",
         "tray.menu.support": "Support",
         "tray.menu.keepawake_method": "Keep-awake method",
+        "tray.menu.presence_compatibility": "Presence compatibility",
         "tray.menu.start_with_windows": "Start with Windows",
         "tray.menu.help": "How it works",
+        "tray.menu.copy_diagnostics": "Copy diagnostics",
         "tray.menu.open_logs": "Open Logs Folder",
         "tray.menu.clear_logs": "Clear Logs",
         "tray.menu.detailed_logging": "Detailed logging",
@@ -55,7 +57,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
             "- Smart: tries Windows API, then F15, then Shift.\n"
             "- Windows API: uses the native Windows execution state API.\n"
             "- F15: simulates F15 periodically.\n"
-            "- Shift: simulates Shift periodically."
+            "- Shift: simulates Shift periodically.\n"
+            "\n"
+            "Presence compatibility uses F15 as a best-effort signal for apps such as "
+            "Teams, but it cannot guarantee any app presence status."
         ),
         "tray.summary.inactive": "Inactive",
         "tray.summary.infinite": "Infinite mode active",
@@ -64,8 +69,13 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.status.remaining": "Remaining: {value}",
         "tray.status.none": "-",
         "tray.status.infinite": "Infinite",
+        "tray.status.method": "Method: {method}",
+        "tray.status.method_effective": "Method: {configured} -> {effective}",
+        "tray.status.presence_compatibility": "Presence compatibility: {method}",
         "tray.notify.timer_finished.title": "Trayffeine",
         "tray.notify.timer_finished.body": "Session ended. Trayffeine returned to inactive mode.",
+        "tray.notify.diagnostics_copied.title": "Trayffeine",
+        "tray.notify.diagnostics_copied.body": "Diagnostics copied to clipboard.",
         "preset.15m": "15 min",
         "preset.30m": "30 min",
         "preset.1h": "1 h",
@@ -91,8 +101,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.preferences": "Preferências",
         "tray.menu.support": "Suporte",
         "tray.menu.keepawake_method": "Método para manter acordado",
+        "tray.menu.presence_compatibility": "Compatibilidade com presença",
         "tray.menu.start_with_windows": "Iniciar com o Windows",
         "tray.menu.help": "Como funciona",
+        "tray.menu.copy_diagnostics": "Copiar diagnóstico",
         "tray.menu.open_logs": "Abrir pasta de logs",
         "tray.menu.clear_logs": "Limpar logs",
         "tray.menu.detailed_logging": "Logs detalhados",
@@ -120,7 +132,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
             "- Inteligente: tenta Windows API, depois F15 e por fim Shift.\n"
             "- Windows API: usa a API nativa de estado de execução do Windows.\n"
             "- F15: simula F15 periodicamente.\n"
-            "- Shift: simula Shift periodicamente."
+            "- Shift: simula Shift periodicamente.\n"
+            "\n"
+            "A compatibilidade com presença usa F15 como sinal de melhor esforço para "
+            "apps como o Teams, mas não garante nenhum status de presença."
         ),
         "tray.summary.inactive": "Inativo",
         "tray.summary.infinite": "Modo infinito ativo",
@@ -129,8 +144,13 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.status.remaining": "Tempo restante: {value}",
         "tray.status.none": "-",
         "tray.status.infinite": "Infinito",
+        "tray.status.method": "Método: {method}",
+        "tray.status.method_effective": "Método: {configured} -> {effective}",
+        "tray.status.presence_compatibility": "Compatibilidade com presença: {method}",
         "tray.notify.timer_finished.title": "Trayffeine",
         "tray.notify.timer_finished.body": "Sessão encerrada. O Trayffeine voltou ao modo inativo.",
+        "tray.notify.diagnostics_copied.title": "Trayffeine",
+        "tray.notify.diagnostics_copied.body": "Diagnóstico copiado para a área de transferência.",
         "preset.15m": "15 min",
         "preset.30m": "30 min",
         "preset.1h": "1 h",
@@ -156,8 +176,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.menu.preferences": "Preferencias",
         "tray.menu.support": "Soporte",
         "tray.menu.keepawake_method": "Método para mantener activo",
+        "tray.menu.presence_compatibility": "Compatibilidad de presencia",
         "tray.menu.start_with_windows": "Iniciar con Windows",
         "tray.menu.help": "Cómo funciona",
+        "tray.menu.copy_diagnostics": "Copiar diagnóstico",
         "tray.menu.open_logs": "Abrir carpeta de logs",
         "tray.menu.clear_logs": "Limpiar logs",
         "tray.menu.detailed_logging": "Logs detallados",
@@ -184,7 +206,10 @@ CATALOGS: dict[LocaleCode, Catalog] = {
             "- Inteligente: prueba API de Windows, luego F15 y después Shift.\n"
             "- API de Windows: usa la API nativa de estado de ejecución.\n"
             "- F15: simula F15 periódicamente.\n"
-            "- Shift: simula Shift periódicamente."
+            "- Shift: simula Shift periódicamente.\n"
+            "\n"
+            "La compatibilidad de presencia usa F15 como señal de mejor esfuerzo para "
+            "apps como Teams, pero no garantiza ningún estado de presencia."
         ),
         "tray.summary.inactive": "Inactivo",
         "tray.summary.infinite": "Modo infinito activo",
@@ -193,8 +218,13 @@ CATALOGS: dict[LocaleCode, Catalog] = {
         "tray.status.remaining": "Tiempo restante: {value}",
         "tray.status.none": "-",
         "tray.status.infinite": "Infinito",
+        "tray.status.method": "Método: {method}",
+        "tray.status.method_effective": "Método: {configured} -> {effective}",
+        "tray.status.presence_compatibility": "Compatibilidad de presencia: {method}",
         "tray.notify.timer_finished.title": "Trayffeine",
         "tray.notify.timer_finished.body": "La sesión terminó. Trayffeine volvió al modo inactivo.",
+        "tray.notify.diagnostics_copied.title": "Trayffeine",
+        "tray.notify.diagnostics_copied.body": "Diagnóstico copiado al portapapeles.",
         "preset.15m": "15 min",
         "preset.30m": "30 min",
         "preset.1h": "1 h",

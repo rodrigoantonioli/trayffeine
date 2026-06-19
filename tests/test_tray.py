@@ -17,12 +17,17 @@ class FakeService:
         self.callbacks: dict[str, object] = {}
         self.mode = SessionMode.off()
         self.now = datetime(2026, 3, 23, 12, 0, tzinfo=UTC)
+        self.effective_keepawake_method = None
 
     def set_callbacks(self, **kwargs: object) -> None:
         self.callbacks = kwargs
 
     def snapshot(self) -> ServiceSnapshot:
-        return ServiceSnapshot(mode=self.mode, now=self.now)
+        return ServiceSnapshot(
+            mode=self.mode,
+            now=self.now,
+            effective_keepawake_method=self.effective_keepawake_method,
+        )
 
     def activate(self, duration: object, preset_key: str) -> None:  # noqa: ARG002
         if duration is None:
@@ -125,19 +130,24 @@ def test_tray_controller_can_build_menu_with_grouped_entries(monkeypatch) -> Non
         f"Trayffeine v{__version__}",
         "Inactive",
     ]
-    assert menu_items[3].text == "Infinite mode"
-    assert menu_items[4].text == "Activate for"
-    assert menu_items[5].text == "Stop"
-    assert menu_items[7].text == "Preferences"
-    assert menu_items[8].text == "Support"
-    assert menu_items[10].text == "Quit"
+    assert menu_items[2].text == "Method: Smart"
+    assert menu_items[4].text == "Infinite mode"
+    assert menu_items[5].text == "Activate for"
+    assert menu_items[6].text == "Stop"
+    assert menu_items[8].text == "Preferences"
+    assert menu_items[9].text == "Support"
+    assert menu_items[11].text == "Quit"
 
     preferences_menu = _submenu(controller._icon.menu, "Preferences")
+    assert _menu_item(preferences_menu, "Presence compatibility").text == (
+        "Presence compatibility"
+    )
     assert _menu_item(preferences_menu, "Keep-awake method").text == "Keep-awake method"
     assert _menu_item(preferences_menu, "Start with Windows").text == "Start with Windows"
     assert _menu_item(preferences_menu, "Language").text == "Language"
 
     support_menu = _submenu(controller._icon.menu, "Support")
+    assert _menu_item(support_menu, "Copy diagnostics").text == "Copy diagnostics"
     assert _menu_item(support_menu, "How it works").text == "How it works"
     assert _menu_item(support_menu, "Detailed logging").text == "Detailed logging"
 
@@ -259,7 +269,10 @@ def test_tray_controller_exposes_help_action_in_support_menu(monkeypatch) -> Non
             "- Smart: tries Windows API, then F15, then Shift.\n"
             "- Windows API: uses the native Windows execution state API.\n"
             "- F15: simulates F15 periodically.\n"
-            "- Shift: simulates Shift periodically.",
+            "- Shift: simulates Shift periodically.\n"
+            "\n"
+            "Presence compatibility uses F15 as a best-effort signal for apps such as "
+            "Teams, but it cannot guarantee any app presence status.",
         )
     ]
 
@@ -344,6 +357,83 @@ def test_tray_controller_exposes_detailed_logging_toggle(monkeypatch) -> None:
     assert settings_store.saved[-1].detailed_logging_enabled is True
     refreshed_item = _menu_item(_submenu(controller._icon.menu, "Support"), "Detailed logging")
     assert _resolve_menu_flag(refreshed_item.checked, refreshed_item) is True
+
+
+def test_tray_controller_exposes_presence_compatibility_toggle(monkeypatch) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    toggled: list[tuple[bool, str]] = []
+    settings_store = FakeSettingsStore()
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        settings_store=settings_store,
+        initial_keepawake_method="execution-state",
+        initial_presence_compatibility_enabled=False,
+        set_presence_compatibility_enabled=lambda enabled, method: toggled.append(
+            (enabled, method)
+        ),
+    )
+
+    preferences_menu = _submenu(controller._icon.menu, "Preferences")
+    presence_item = _menu_item(preferences_menu, "Presence compatibility")
+    presence_item.action(None, None)
+
+    assert toggled == [(True, "execution-state")]
+    assert settings_store.saved[-1].presence_compatibility_enabled is True
+    refreshed_item = _menu_item(
+        _submenu(controller._icon.menu, "Preferences"),
+        "Presence compatibility",
+    )
+    assert _resolve_menu_flag(refreshed_item.checked, refreshed_item) is True
+
+
+def test_tray_controller_preserves_effective_f15_when_method_changes_under_presence(
+    monkeypatch,
+) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    selected: list[str] = []
+    settings_store = FakeSettingsStore()
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        settings_store=settings_store,
+        initial_keepawake_method="execution-state",
+        initial_presence_compatibility_enabled=True,
+        set_keepawake_method=lambda method: selected.append(method),
+    )
+
+    preferences_menu = _submenu(controller._icon.menu, "Preferences")
+    keepawake_menu = _submenu(preferences_menu, "Keep-awake method")
+    shift_item = _menu_item(keepawake_menu, "Shift")
+    shift_item.action(None, None)
+
+    assert selected == []
+    assert controller._keepawake_method == "shift"
+    assert settings_store.saved[-1].keepawake_method == "shift"
+    assert settings_store.saved[-1].presence_compatibility_enabled is True
+
+
+def test_tray_controller_copies_diagnostics(monkeypatch, tmp_path) -> None:
+    tray_module = _load_tray_module(monkeypatch)
+
+    copied: list[str] = []
+    controller = tray_module.TrayIconController(
+        FakeService(),
+        system_locale="en",
+        settings_path=tmp_path / "settings.json",
+        log_path=tmp_path / "trayffeine.log",
+        copy_to_clipboard=lambda text: copied.append(text),
+    )
+
+    support_menu = _submenu(controller._icon.menu, "Support")
+    copy_item = _menu_item(support_menu, "Copy diagnostics")
+    copy_item.action(None, None)
+
+    assert copied
+    assert "Trayffeine diagnostics" in copied[0]
+    assert "Presence compatibility: disabled" in copied[0]
 
 
 def test_tray_controller_exposes_keepawake_method_menu(monkeypatch) -> None:

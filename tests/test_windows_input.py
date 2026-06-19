@@ -45,6 +45,15 @@ def test_shift_backend_uses_shift_virtual_key(monkeypatch) -> None:
     _, inputs, _ = send_input.calls[0]
     assert inputs[0].ki.wVk == module.VK_SHIFT
     assert inputs[1].ki.wVk == module.VK_SHIFT
+    assert backend.effective_method == "shift"
+
+
+def test_f15_backend_reports_effective_method(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+
+    backend = module.create_keepawake_backend("f15")
+
+    assert backend.effective_method == "f15"
 
 
 def test_execution_state_backend_calls_windows_api_on_start_and_stop(monkeypatch) -> None:
@@ -100,6 +109,7 @@ def test_smart_backend_falls_back_in_fixed_order_on_technical_failure(monkeypatc
     backend.on_session_start()
     backend.send_keepawake()
 
+    assert backend.effective_method == "shift"
     assert calls == [
         "execution-state:start",
         "f15:start",

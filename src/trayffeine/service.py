@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol
 
+from .keepawake import SUPPORTED_KEEPAWAKE_METHODS, KeepAwakeMethod
 from .session import (
     DEFAULT_KEEPAWAKE_INTERVAL,
     SessionMode,
@@ -20,6 +21,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class InputBackend(Protocol):
+    effective_method: KeepAwakeMethod | None
+
     def on_session_start(self) -> None: ...
 
     def send_keepawake(self) -> None: ...
@@ -31,6 +34,7 @@ class InputBackend(Protocol):
 class ServiceSnapshot:
     mode: SessionMode
     now: datetime
+    effective_keepawake_method: KeepAwakeMethod | None = None
 
 
 class TrayffeineService:
@@ -52,6 +56,9 @@ class TrayffeineService:
         self._on_tick = on_tick
         self._state = SessionState(now_fn=now_fn)
         self._last_sent_at: datetime | None = None
+        self._last_effective_method: KeepAwakeMethod | None = self._backend_effective_method(
+            backend
+        )
         self._pending_backend_ops: deque[tuple[str, InputBackend]] = deque()
         self._lock = threading.RLock()
         self._stop_event = threading.Event()
@@ -76,7 +83,11 @@ class TrayffeineService:
 
     def snapshot(self) -> ServiceSnapshot:
         with self._lock:
-            return ServiceSnapshot(mode=self._state.mode, now=self._now_fn())
+            return ServiceSnapshot(
+                mode=self._state.mode,
+                now=self._now_fn(),
+                effective_keepawake_method=self._backend_effective_method(self._backend),
+            )
 
     def activate(self, duration: timedelta | None, preset_key: str) -> None:
         with self._lock:
@@ -180,6 +191,7 @@ class TrayffeineService:
                         LOGGER.exception("Failed to send keep-awake input")
                     finally:
                         self._last_sent_at = self._now_fn()
+                self._emit_effective_method_change_if_needed()
                 continue
 
             woke_early = self._wake_event.wait(timeout=timeout)
@@ -222,6 +234,7 @@ class TrayffeineService:
                 self._start_backend_on_worker(backend)
             else:
                 self._stop_backend_on_worker(backend)
+            self._emit_effective_method_change_if_needed()
 
     def _queue_backend_start_locked(self, backend: InputBackend) -> None:
         self._pending_backend_ops.append(("start", backend))
@@ -243,3 +256,21 @@ class TrayffeineService:
 
     def _mode_has_pending_backend(self, mode: SessionMode) -> bool:
         return mode.kind != "off"
+
+    def _emit_effective_method_change_if_needed(self) -> None:
+        with self._lock:
+            current = self._backend_effective_method(self._backend)
+            if current == self._last_effective_method:
+                return
+            self._last_effective_method = current
+
+        self._emit_state_change()
+
+    def _backend_effective_method(
+        self,
+        backend: InputBackend,
+    ) -> KeepAwakeMethod | None:
+        method = getattr(backend, "effective_method", None)
+        if method in SUPPORTED_KEEPAWAKE_METHODS:
+            return method
+        return None

@@ -49,6 +49,21 @@ Windows run as the final confidence step.
 - Keep backend lifecycle on the worker thread.
 - Timed sessions must never restore after restart.
 - `Start with Windows` is per-user and uses the current-user Windows `Run` key.
+- `Presence compatibility` is a separate persisted preference, not a keep-awake method id.
+- When presence compatibility is enabled, the saved normal method remains unchanged and the effective backend is `f15`.
+- Do not promise Teams or app-presence status. Document this as best effort and keep the stronger sleep-prevention language tied to `Windows API`.
+- Keep diagnostics stable and support-oriented. The clipboard payload should remain plain English key-value text so it is easy to paste into issues.
+
+## Documentation Notes
+
+When changing user-facing behavior, update public and maintainer docs together:
+
+- `README.md` for install, usage, limitations, and support behavior
+- `CHANGELOG.md` for release-facing highlights
+- `docs/ROADMAP.md` when a planned bucket moves or a backlog item is delivered
+- `AGENTS.md` when future coding agents need the behavior or architecture rule
+
+For tray or support features, include the real Windows validation caveat unless the behavior was actually tested in a real tray session.
 
 ## Versioning And Releases
 

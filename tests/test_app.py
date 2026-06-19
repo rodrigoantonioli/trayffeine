@@ -31,6 +31,7 @@ class FakeSettingsStore:
             keepawake_method="shift",
             start_with_windows=True,
         )
+        self.path = Path("/tmp/settings.json")
 
     def load(self) -> StoredSettings:
         return self._settings
@@ -41,6 +42,9 @@ class FakeService:
         self.backend = backend
         self.activations: list[tuple[object, str]] = []
         self.quit_called = False
+
+    def set_backend(self, backend) -> None:  # noqa: ANN001
+        self.backend = backend
 
     def activate(self, duration: object, preset_key: str) -> None:
         self.activations.append((duration, preset_key))
@@ -79,6 +83,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     fake_windows.open_path_in_shell = lambda path: None
     fake_windows.set_start_with_windows_enabled = lambda enabled: startup_calls.append(enabled)
     fake_windows.show_info_message_box = lambda title, message: None
+    fake_windows.copy_text_to_clipboard = lambda text: None
 
     monkeypatch.setattr(trayffeine.i18n, "detect_system_locale", lambda: "en")
     monkeypatch.setattr(
@@ -130,6 +135,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     assert tray.kwargs["initial_language_selection"] == LanguageSelection.explicit("es")
     assert tray.kwargs["initial_keepawake_method"] == "shift"
     assert tray.kwargs["initial_start_with_windows"] is True
+    assert tray.kwargs["initial_presence_compatibility_enabled"] is False
     assert callable(tray.kwargs["show_help"])
     assert callable(tray.kwargs["open_logs_folder"])
     assert tray.kwargs["detailed_logging_enabled"] is True
@@ -138,7 +144,82 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     assert callable(tray.kwargs["clear_logs"])
     assert callable(tray.kwargs["set_detailed_logging_enabled"])
     assert callable(tray.kwargs["set_keepawake_method"])
+    assert callable(tray.kwargs["set_presence_compatibility_enabled"])
     assert callable(tray.kwargs["set_start_with_windows_enabled"])
+    assert callable(tray.kwargs["copy_to_clipboard"])
+
+
+def test_run_app_uses_f15_backend_when_presence_compatibility_is_enabled(
+    monkeypatch,
+) -> None:
+    import trayffeine.app_logging
+    import trayffeine.i18n
+    import trayffeine.service
+    import trayffeine.settings
+    import trayffeine.tray
+
+    created: dict[str, object] = {}
+    fake_windows = ModuleType("trayffeine.windows")
+    fake_windows.SingleInstanceGuard = FakeGuard
+    fake_windows.create_keepawake_backend = lambda method: f"backend:{method}"
+    fake_windows.confirm_message_box = lambda title, message: True
+    fake_windows.open_path_in_shell = lambda path: None
+    fake_windows.set_start_with_windows_enabled = lambda enabled: None
+    fake_windows.show_info_message_box = lambda title, message: None
+    fake_windows.copy_text_to_clipboard = lambda text: None
+
+    monkeypatch.setattr(trayffeine.i18n, "detect_system_locale", lambda: "en")
+    monkeypatch.setattr(
+        trayffeine.app_logging,
+        "configure_logging",
+        lambda *args, **kwargs: Path("/tmp/trayffeine.log"),
+    )
+    monkeypatch.setattr(
+        trayffeine.app_logging,
+        "default_log_path",
+        lambda: Path("/tmp/trayffeine.log"),
+    )
+    monkeypatch.setattr(
+        trayffeine.settings,
+        "SettingsStore",
+        lambda: FakeSettingsStore(
+            StoredSettings(
+                language_selection=LanguageSelection.auto(),
+                restore_infinite=False,
+                detailed_logging_enabled=False,
+                keepawake_method="execution-state",
+                start_with_windows=False,
+                presence_compatibility_enabled=True,
+            )
+        ),
+    )
+    monkeypatch.setitem(sys.modules, "trayffeine.windows", fake_windows)
+
+    def create_service(*args, **kwargs):  # noqa: ANN002, ANN003
+        service = FakeService(*args, **kwargs)
+        created["service"] = service
+        return service
+
+    def create_tray(service, **kwargs):  # noqa: ANN001, ANN003
+        tray = FakeTray(service, **kwargs)
+        created["tray"] = tray
+        return tray
+
+    monkeypatch.setattr(trayffeine.service, "TrayffeineService", create_service)
+    monkeypatch.setattr(trayffeine.tray, "TrayIconController", create_tray)
+
+    run_app()
+
+    service = created["service"]
+    tray = created["tray"]
+
+    assert service.backend == "backend:f15"
+    assert tray.kwargs["initial_keepawake_method"] == "execution-state"
+    assert tray.kwargs["initial_presence_compatibility_enabled"] is True
+
+    tray.kwargs["set_presence_compatibility_enabled"](False, "execution-state")
+
+    assert service.backend == "backend:execution-state"
 
 
 def test_run_app_logs_and_shows_dialog_on_unhandled_exception(monkeypatch, tmp_path) -> None:
@@ -159,6 +240,7 @@ def test_run_app_logs_and_shows_dialog_on_unhandled_exception(monkeypatch, tmp_p
     fake_windows.open_path_in_shell = lambda path: None
     fake_windows.set_start_with_windows_enabled = lambda enabled: None
     fake_windows.show_info_message_box = lambda title, message: None
+    fake_windows.copy_text_to_clipboard = lambda text: None
 
     monkeypatch.setattr(
         trayffeine.app_logging,
@@ -216,6 +298,7 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
     fake_windows.open_path_in_shell = lambda path: None
     fake_windows.set_start_with_windows_enabled = lambda enabled: None
     fake_windows.show_info_message_box = lambda title, message: None
+    fake_windows.copy_text_to_clipboard = lambda text: None
 
     monkeypatch.setenv("TRAYFFEINE_LOG_LEVEL", "INFO")
     monkeypatch.setattr(trayffeine.i18n, "detect_system_locale", lambda: "en")
@@ -284,6 +367,7 @@ def test_run_app_continues_when_start_with_windows_sync_fails(monkeypatch) -> No
         _ for _ in ()
     ).throw(OSError("registry unavailable"))
     fake_windows.show_info_message_box = lambda title, message: None
+    fake_windows.copy_text_to_clipboard = lambda text: None
 
     monkeypatch.setattr(trayffeine.i18n, "detect_system_locale", lambda: "en")
     monkeypatch.setattr(

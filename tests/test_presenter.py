@@ -13,6 +13,7 @@ from trayffeine.presenter import (
     format_clock,
     icon_variant,
     menu_summary_text,
+    method_status_text,
     timer_finished_notification,
     tooltip_text,
 )
@@ -31,6 +32,7 @@ def test_inactive_state_has_inactive_icon_and_disabled_off() -> None:
     assert [entry.text for entry in status_entries] == [
         f"Trayffeine v{__version__}",
         "Inativo",
+        "Método: Inteligente",
     ]
     assert next(entry for entry in entries if entry.key == "stop").enabled is False
     assert next(entry for entry in entries if entry.key == "infinite").enabled is True
@@ -44,13 +46,20 @@ def test_timed_state_marks_the_selected_preset() -> None:
 
     entries = build_menu_entries(mode, now, translator)
     duration_entries = build_duration_menu_entries(mode, now, translator)
-    status_entries = build_status_entries(mode, now + timedelta(minutes=1), translator)
+    status_entries = build_status_entries(
+        mode,
+        now + timedelta(minutes=1),
+        translator,
+        configured_method="smart",
+        effective_method="execution-state",
+    )
 
     assert icon_variant(mode, now) == "active"
     assert tooltip_text(mode, now, translator) == "Trayffeine: active for 0s | 15m 00s left"
     assert [entry.text for entry in status_entries] == [
         f"Trayffeine v{__version__}",
         f"Active until {format_clock(now + timedelta(minutes=15))}",
+        "Method: Smart -> Windows API",
     ]
     assert next(entry for entry in duration_entries if entry.key == "15m").checked is True
     assert next(entry for entry in entries if entry.key == "stop").enabled is True
@@ -70,6 +79,7 @@ def test_infinite_state_marks_infinite_preset() -> None:
     assert [entry.text for entry in status_entries] == [
         f"Trayffeine v{__version__}",
         "Modo infinito activo",
+        "Método: Inteligente",
     ]
     assert tooltip_text(mode, now + timedelta(seconds=5), translator) == (
         "Trayffeine: activo hace 5s | infinito"
@@ -128,3 +138,15 @@ def test_keepawake_method_menu_entries_reflect_selected_method() -> None:
         "Shift",
     ]
     assert next(entry for entry in entries if entry.key == "execution-state").checked is True
+
+
+def test_method_status_text_shows_presence_compatibility_mode() -> None:
+    assert (
+        method_status_text(
+            configured_method="execution-state",
+            effective_method="f15",
+            presence_compatibility_enabled=True,
+            translator=Translator("en"),
+        )
+        == "Presence compatibility: F15"
+    )
