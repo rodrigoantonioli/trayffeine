@@ -22,7 +22,10 @@ Current product behavior:
 - supported keep-awake methods: `smart`, `execution-state`, `f15`, `shift`
 - persistent `Start with Windows` toggle
 - persistent detailed logging toggle
+- persistent presence compatibility toggle that uses `F15` as the effective method
+- configured and effective keep-awake method summaries in the tray menu
 - support actions for help, opening logs, and clearing logs
+- support action for copying diagnostics
 - persistent restore of infinite mode, while timed sessions always restart inactive
 - first launch defaults to infinite restore plus detailed logging enabled
 - per-user installer that always creates a Start Menu shortcut
@@ -77,12 +80,16 @@ For real tray validation, run the app from a real Windows path.
 - `src/trayffeine/keepawake.py`
   - stable keep-awake method ids
   - coercion helper for persisted settings
+  - effective-method selection for presence compatibility
 
 - `src/trayffeine/presenter.py`
   - tray summaries
   - tooltip text
   - notification payloads
   - presentation-only text assembly
+
+- `src/trayffeine/diagnostics.py`
+  - stable support diagnostics text assembly
 
 - `src/trayffeine/i18n.py`
   - locale detection and normalization
@@ -98,7 +105,7 @@ For real tray validation, run the app from a real Windows path.
 
 - `src/trayffeine/settings.py`
   - JSON settings persistence
-  - stores language, infinite restore, detailed logging, keep-awake method, and startup preference
+  - stores language, infinite restore, detailed logging, keep-awake method, presence compatibility, and startup preference
   - missing settings file is treated as first launch
 
 - `src/trayffeine/win32_tray.py`
@@ -113,6 +120,7 @@ For real tray validation, run the app from a real Windows path.
   - mutex
   - dialogs
   - shell-open helper
+  - clipboard helper for diagnostics
   - current-user startup registration via the Windows `Run` key
 
 - `packaging/windows/`
@@ -124,7 +132,7 @@ For real tray validation, run the app from a real Windows path.
   - unit and smoke-style coverage for session, presenter, i18n, logging, tray wiring, service behavior, and Windows integration helpers
 
 - `CHANGELOG.md`
-  - milestone summary through `1.1.2`
+  - milestone summary through `1.2.0`
 
 ## Architecture Rules
 
@@ -142,6 +150,11 @@ For real tray validation, run the app from a real Windows path.
 - Preserve stable keep-awake method ids.
   - `smart`, `execution-state`, `f15`, `shift`
 
+- Keep presence compatibility separate from keep-awake method ids.
+  - it is a persisted preference
+  - while enabled, the effective backend is `f15`
+  - the saved normal keep-awake method must remain unchanged
+
 - Keep backend lifecycle on the worker thread.
   - `SetThreadExecutionState` must be started, refreshed, and cleared on the same worker thread
 
@@ -155,6 +168,14 @@ For real tray validation, run the app from a real Windows path.
 
 - Keep correct accents and natural spelling in localized text.
 
+- Do not promise Teams or other app-presence status.
+  - describe presence compatibility as best effort
+  - preserve the distinction between preventing Windows idle/sleep and influencing app-specific presence
+
+- Keep diagnostics plain and stable.
+  - the clipboard payload is support text, not localized UI copy
+  - include version, language, session, methods, key preferences, settings path, and log path
+
 ## Persistence Model
 
 Stored settings currently include:
@@ -163,6 +184,7 @@ Stored settings currently include:
 - `restore_infinite`
 - `detailed_logging_enabled`
 - `keepawake_method`
+- `presence_compatibility_enabled`
 - `start_with_windows`
 
 Current first-run defaults:
@@ -170,6 +192,7 @@ Current first-run defaults:
 - `restore_infinite = true`
 - `detailed_logging_enabled = true`
 - `keepawake_method = smart`
+- `presence_compatibility_enabled = false`
 - `start_with_windows = false`
 - `language_selection = auto`
 
@@ -200,6 +223,7 @@ Examples of useful `INFO` events:
 - infinite mode enable or disable
 - language change
 - keep-awake method change
+- presence compatibility toggle
 - start-with-Windows toggle
 - timer expiration
 - opening logs folder
@@ -240,7 +264,7 @@ For changes touching `pystray`, dialogs, or installer behavior, the final confid
 
 ## Release and Versioning
 
-- Project version is currently `1.1.2`.
+- Project version is currently `1.2.0`.
 - Runtime version lives in:
   - `pyproject.toml`
   - `src/trayffeine/__init__.py`
@@ -252,7 +276,7 @@ GitHub workflows:
 - `CI` runs on push to `main` and on pull requests
 - `Preview Build` runs on pull requests and manual dispatch, publishing a Windows installer artifact for testing
 - `Release` runs only on tags `v*`
-- stable tags such as `v1.1.2` publish normal releases
+- stable tags such as `v1.2.0` publish normal releases
 - tags matching `v*-beta*` publish GitHub prereleases
 
 If changing packaging or release behavior, verify:

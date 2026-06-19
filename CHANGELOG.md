@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+Usability and support release for Trayffeine.
+
+Highlights:
+
+- adds persistent presence compatibility mode using F15 as the effective keep-awake method
+- shows configured and effective keep-awake method status in the tray menu
+- adds `Copy diagnostics` for support details such as version, language, session, methods, settings path, and log path
+- reorganizes the native tray menu with compact status, preferences, and support sections
+- documents how presence compatibility, diagnostics, and support reporting should be used
+- clarifies that Teams and similar presence indicators are best effort, not guaranteed
+
 ## 1.1.2
 
 Maintenance release for Trayffeine.

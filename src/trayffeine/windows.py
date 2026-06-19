@@ -32,6 +32,9 @@ MB_ICONINFORMATION = 0x00000040
 MB_ICONQUESTION = 0x00000020
 MB_YESNO = 0x00000004
 IDYES = 6
+CF_UNICODETEXT = 13
+GMEM_MOVEABLE = 0x0002
+HWND_MESSAGE = wintypes.HWND(-3)
 ES_SYSTEM_REQUIRED = 0x00000001
 ES_DISPLAY_REQUIRED = 0x00000002
 ES_CONTINUOUS = 0x80000000
@@ -106,8 +109,13 @@ user32.MessageBoxW.restype = ctypes.c_int
 
 
 class KeyboardInputBackend:
-    def __init__(self, virtual_key: int) -> None:
+    def __init__(self, virtual_key: int, method: KeepAwakeMethod) -> None:
         self._virtual_key = virtual_key
+        self._method = method
+
+    @property
+    def effective_method(self) -> KeepAwakeMethod:
+        return self._method
 
     def on_session_start(self) -> None:
         return
@@ -134,6 +142,10 @@ class ExecutionStateBackend:
         self._active_flags = ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
         self._inactive_flags = ES_CONTINUOUS
 
+    @property
+    def effective_method(self) -> KeepAwakeMethod:
+        return "execution-state"
+
     def on_session_start(self) -> None:
         self._apply(self._active_flags)
 
@@ -157,10 +169,16 @@ class SmartKeepAwakeBackend:
     ) -> None:
         self._candidates = candidates or (
             ("execution-state", ExecutionStateBackend()),
-            ("f15", KeyboardInputBackend(VK_F15)),
-            ("shift", KeyboardInputBackend(VK_SHIFT)),
+            ("f15", KeyboardInputBackend(VK_F15, "f15")),
+            ("shift", KeyboardInputBackend(VK_SHIFT, "shift")),
         )
         self._active_index: int | None = None
+
+    @property
+    def effective_method(self) -> KeepAwakeMethod | None:
+        if self._active_index is None:
+            return None
+        return self._candidates[self._active_index][0]
 
     def on_session_start(self) -> None:
         self._active_index = None
@@ -229,16 +247,16 @@ class SmartKeepAwakeBackend:
 
 class WindowsInputBackend(KeyboardInputBackend):
     def __init__(self) -> None:
-        super().__init__(VK_F15)
+        super().__init__(VK_F15, "f15")
 
 
 def create_keepawake_backend(method: KeepAwakeMethod):
     if method == "execution-state":
         return ExecutionStateBackend()
     if method == "f15":
-        return KeyboardInputBackend(VK_F15)
+        return KeyboardInputBackend(VK_F15, "f15")
     if method == "shift":
-        return KeyboardInputBackend(VK_SHIFT)
+        return KeyboardInputBackend(VK_SHIFT, "shift")
     return SmartKeepAwakeBackend()
 
 
@@ -253,6 +271,98 @@ def show_info_message_box(title: str, message: str) -> None:
 def confirm_message_box(title: str, message: str) -> bool:
     result = user32.MessageBoxW(None, message, title, MB_YESNO | MB_ICONQUESTION)
     return result == IDYES
+
+
+def copy_text_to_clipboard(text: str) -> None:
+    kernel32.GlobalAlloc.argtypes = (UINT, ctypes.c_size_t)
+    kernel32.GlobalAlloc.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = (ctypes.c_void_p,)
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalUnlock.argtypes = (ctypes.c_void_p,)
+    kernel32.GlobalUnlock.restype = wintypes.BOOL
+    user32.OpenClipboard.argtypes = (wintypes.HWND,)
+    user32.OpenClipboard.restype = wintypes.BOOL
+    user32.EmptyClipboard.argtypes = ()
+    user32.EmptyClipboard.restype = wintypes.BOOL
+    user32.SetClipboardData.argtypes = (UINT, ctypes.c_void_p)
+    user32.SetClipboardData.restype = ctypes.c_void_p
+    user32.CloseClipboard.argtypes = ()
+    user32.CloseClipboard.restype = wintypes.BOOL
+    user32.DestroyWindow.argtypes = (wintypes.HWND,)
+    user32.DestroyWindow.restype = wintypes.BOOL
+
+    buffer = ctypes.create_unicode_buffer(text)
+    byte_count = ctypes.sizeof(buffer)
+    handle = kernel32.GlobalAlloc(GMEM_MOVEABLE, byte_count)
+    if not handle:
+        error_code = ctypes.get_last_error()
+        raise OSError(error_code, "GlobalAlloc failed")
+
+    locked = kernel32.GlobalLock(handle)
+    if not locked:
+        error_code = ctypes.get_last_error()
+        raise OSError(error_code, "GlobalLock failed")
+
+    try:
+        ctypes.memmove(locked, ctypes.addressof(buffer), byte_count)
+    finally:
+        kernel32.GlobalUnlock(handle)
+
+    owner_window = _create_clipboard_owner_window()
+    clipboard_opened = False
+
+    try:
+        if not user32.OpenClipboard(owner_window):
+            error_code = ctypes.get_last_error()
+            raise OSError(error_code, "OpenClipboard failed")
+        clipboard_opened = True
+        if not user32.EmptyClipboard():
+            error_code = ctypes.get_last_error()
+            raise OSError(error_code, "EmptyClipboard failed")
+        if not user32.SetClipboardData(CF_UNICODETEXT, handle):
+            error_code = ctypes.get_last_error()
+            raise OSError(error_code, "SetClipboardData failed")
+    finally:
+        if clipboard_opened:
+            user32.CloseClipboard()
+        user32.DestroyWindow(owner_window)
+
+
+def _create_clipboard_owner_window() -> wintypes.HWND:
+    user32.CreateWindowExW.argtypes = (
+        DWORD,
+        wintypes.LPCWSTR,
+        wintypes.LPCWSTR,
+        DWORD,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.HWND,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+    )
+    user32.CreateWindowExW.restype = wintypes.HWND
+
+    owner_window = user32.CreateWindowExW(
+        0,
+        "STATIC",
+        "Trayffeine Clipboard Owner",
+        0,
+        0,
+        0,
+        0,
+        0,
+        HWND_MESSAGE,
+        None,
+        None,
+        None,
+    )
+    if not owner_window:
+        error_code = ctypes.get_last_error()
+        raise OSError(error_code, "CreateWindowExW failed")
+    return owner_window
 
 
 def open_path_in_shell(path: str | Path) -> None:

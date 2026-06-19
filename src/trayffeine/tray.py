@@ -3,11 +3,14 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from PIL import Image, ImageDraw
 
+from . import __version__
 from .assets import asset_path
+from .diagnostics import DiagnosticsInfo, build_diagnostics_text
 from .i18n import LanguageSelection, LocaleCode, Translator, effective_locale
 from .keepawake import DEFAULT_KEEPAWAKE_METHOD, KeepAwakeMethod
 from .presenter import (
@@ -17,6 +20,7 @@ from .presenter import (
     build_menu_entries,
     build_status_entries,
     icon_variant,
+    menu_summary_text,
     timer_finished_notification,
     tooltip_text,
 )
@@ -45,14 +49,20 @@ class TrayIconController:
         system_locale: LocaleCode,
         initial_language_selection: LanguageSelection | None = None,
         initial_keepawake_method: KeepAwakeMethod = DEFAULT_KEEPAWAKE_METHOD,
+        initial_presence_compatibility_enabled: bool = False,
         initial_start_with_windows: bool = False,
         settings_store: SettingsStore | None = None,
+        settings_path: Path | None = None,
+        log_path: Path | None = None,
         show_help: Callable[[str, str], None] | None = None,
         open_logs_folder: Callable[[], None] | None = None,
         clear_logs: Callable[[], None] | None = None,
+        copy_to_clipboard: Callable[[str], None] | None = None,
         confirm_clear_logs: Callable[[str, str], bool] | None = None,
         set_detailed_logging_enabled: Callable[[bool], None] | None = None,
         set_keepawake_method: Callable[[KeepAwakeMethod], None] | None = None,
+        set_presence_compatibility_enabled: Callable[[bool, KeepAwakeMethod], None]
+        | None = None,
         set_start_with_windows_enabled: Callable[[bool], None] | None = None,
         detailed_logging_enabled: bool = False,
         detailed_logging_preference: bool | None = None,
@@ -62,13 +72,20 @@ class TrayIconController:
         self._system_locale = system_locale
         self._language_selection = initial_language_selection or LanguageSelection.auto()
         self._keepawake_method = initial_keepawake_method
+        self._presence_compatibility_enabled = initial_presence_compatibility_enabled
         self._settings_store = settings_store
+        self._settings_path = settings_path
+        self._log_path = log_path
         self._show_help_callback = show_help
         self._open_logs_folder_callback = open_logs_folder
         self._clear_logs_callback = clear_logs
+        self._copy_to_clipboard_callback = copy_to_clipboard
         self._confirm_clear_logs_callback = confirm_clear_logs
         self._set_detailed_logging_enabled_callback = set_detailed_logging_enabled
         self._set_keepawake_method_callback = set_keepawake_method
+        self._set_presence_compatibility_enabled_callback = (
+            set_presence_compatibility_enabled
+        )
         self._set_start_with_windows_enabled_callback = set_start_with_windows_enabled
         self._detailed_logging_enabled = detailed_logging_enabled
         self._detailed_logging_preference = (
@@ -109,7 +126,14 @@ class TrayIconController:
         _, Menu, MenuItem = _pystray_types()
         snapshot = self._service.snapshot()
         translator = self._translator()
-        status_entries = build_status_entries(snapshot.mode, snapshot.now, translator)
+        status_entries = build_status_entries(
+            snapshot.mode,
+            snapshot.now,
+            translator,
+            configured_method=self._keepawake_method,
+            effective_method=snapshot.effective_keepawake_method,
+            presence_compatibility_enabled=self._presence_compatibility_enabled,
+        )
         entries = build_menu_entries(snapshot.mode, snapshot.now, translator)
         duration_entries = build_duration_menu_entries(snapshot.mode, snapshot.now, translator)
         infinite_entry = next(entry for entry in entries if entry.key == "infinite")
@@ -206,6 +230,14 @@ class TrayIconController:
         translator = self._translator()
         return Menu(
             MenuItem(
+                translator.t("tray.menu.presence_compatibility"),
+                self._on_toggle_presence_compatibility,
+                checked=self._static_bool(self._presence_compatibility_enabled),
+                enabled=self._static_bool(
+                    self._set_presence_compatibility_enabled_callback is not None
+                ),
+            ),
+            MenuItem(
                 translator.t("tray.menu.keepawake_method"),
                 self._build_keepawake_method_menu(),
             ),
@@ -224,6 +256,12 @@ class TrayIconController:
         _, Menu, MenuItem = _pystray_types()
         translator = self._translator()
         return Menu(
+            MenuItem(
+                translator.t("tray.menu.copy_diagnostics"),
+                self._on_copy_diagnostics,
+                enabled=self._static_bool(self._copy_to_clipboard_callback is not None),
+            ),
+            Menu.SEPARATOR,
             MenuItem(
                 translator.t("tray.menu.help"),
                 self._on_show_help,
@@ -261,7 +299,10 @@ class TrayIconController:
 
     def _make_keepawake_method_handler(self, method: KeepAwakeMethod):
         def handler(icon: Icon, item: MenuItem) -> None:  # noqa: ARG001
-            if self._set_keepawake_method_callback is not None:
+            if (
+                self._set_keepawake_method_callback is not None
+                and not self._presence_compatibility_enabled
+            ):
                 try:
                     self._set_keepawake_method_callback(method)
                 except Exception:
@@ -334,6 +375,39 @@ class TrayIconController:
         self._detailed_logging_preference = enabled
         self._persist_settings()
         self._request_refresh()
+
+    def _on_toggle_presence_compatibility(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        enabled = not self._presence_compatibility_enabled
+        if self._set_presence_compatibility_enabled_callback is not None:
+            try:
+                self._set_presence_compatibility_enabled_callback(
+                    enabled,
+                    self._keepawake_method,
+                )
+            except Exception:
+                LOGGER.exception("Failed to change presence compatibility state")
+                return
+
+        self._presence_compatibility_enabled = enabled
+        LOGGER.info("Presence compatibility changed from tray menu: %s", enabled)
+        self._persist_settings()
+        self._request_refresh()
+
+    def _on_copy_diagnostics(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
+        if self._copy_to_clipboard_callback is None:
+            return
+
+        try:
+            diagnostics = build_diagnostics_text(self._diagnostics_info())
+            self._copy_to_clipboard_callback(diagnostics)
+            LOGGER.info("Diagnostics copied from tray menu")
+            title = self._translator().t("tray.notify.diagnostics_copied.title")
+            message = self._translator().t("tray.notify.diagnostics_copied.body")
+            self._icon.notify(message, title)
+        except NotImplementedError:
+            return
+        except Exception:
+            LOGGER.exception("Failed to copy Trayffeine diagnostics")
 
     def _on_toggle_start_with_windows(self, icon: Icon, item: MenuItem) -> None:  # noqa: ARG002
         enabled = not self._start_with_windows_enabled
@@ -476,8 +550,30 @@ class TrayIconController:
             detailed_logging_enabled=self._detailed_logging_preference,
             keepawake_method=self._keepawake_method,
             start_with_windows=self._start_with_windows_enabled,
+            presence_compatibility_enabled=self._presence_compatibility_enabled,
         )
         self._settings_store.save(settings)
+
+    def _diagnostics_info(self) -> DiagnosticsInfo:
+        snapshot = self._service.snapshot()
+        return DiagnosticsInfo(
+            version=__version__,
+            language_selection=self._language_selection_text(),
+            effective_locale=self._effective_locale(),
+            session_state=menu_summary_text(snapshot.mode, snapshot.now, Translator("en")),
+            configured_keepawake_method=self._keepawake_method,
+            effective_keepawake_method=snapshot.effective_keepawake_method,
+            presence_compatibility_enabled=self._presence_compatibility_enabled,
+            detailed_logging_enabled=self._detailed_logging_enabled,
+            start_with_windows=self._start_with_windows_enabled,
+            settings_path=str(self._settings_path) if self._settings_path else "-",
+            log_path=str(self._log_path) if self._log_path else "-",
+        )
+
+    def _language_selection_text(self) -> str:
+        if self._language_selection.mode == "manual":
+            return f"manual:{self._language_selection.locale}"
+        return "auto"
 
     def _load_image(self, filename: str, *, fill: str) -> Image.Image:
         path = asset_path(filename)

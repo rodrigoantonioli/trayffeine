@@ -45,6 +45,15 @@ def test_shift_backend_uses_shift_virtual_key(monkeypatch) -> None:
     _, inputs, _ = send_input.calls[0]
     assert inputs[0].ki.wVk == module.VK_SHIFT
     assert inputs[1].ki.wVk == module.VK_SHIFT
+    assert backend.effective_method == "shift"
+
+
+def test_f15_backend_reports_effective_method(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+
+    backend = module.create_keepawake_backend("f15")
+
+    assert backend.effective_method == "f15"
 
 
 def test_execution_state_backend_calls_windows_api_on_start_and_stop(monkeypatch) -> None:
@@ -100,6 +109,7 @@ def test_smart_backend_falls_back_in_fixed_order_on_technical_failure(monkeypatc
     backend.on_session_start()
     backend.send_keepawake()
 
+    assert backend.effective_method == "shift"
     assert calls == [
         "execution-state:start",
         "f15:start",
@@ -149,6 +159,30 @@ def test_startup_launch_command_uses_pythonw_module_when_not_frozen(monkeypatch)
         module.startup_launch_command()
         == r'"C:\Program Files\Python312\pythonw.exe" -m trayffeine'
     )
+
+
+def test_copy_text_to_clipboard_uses_helper_owner_window(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+    clipboard_owner = ctypes.c_void_p(1001)
+    global_handle = ctypes.c_void_p(2002)
+    clipboard_buffer = ctypes.create_string_buffer(128)
+
+    module.user32.CreateWindowExW = FakeFunction(return_value=clipboard_owner)
+    module.user32.OpenClipboard = FakeFunction(return_value=1)
+    module.user32.EmptyClipboard = FakeFunction(return_value=1)
+    module.user32.SetClipboardData = FakeFunction(return_value=global_handle)
+    module.user32.CloseClipboard = FakeFunction(return_value=1)
+    module.user32.DestroyWindow = FakeFunction(return_value=1)
+    module.kernel32.GlobalAlloc = FakeFunction(return_value=global_handle)
+    module.kernel32.GlobalLock = FakeFunction(return_value=ctypes.addressof(clipboard_buffer))
+    module.kernel32.GlobalUnlock = FakeFunction(return_value=1)
+
+    module.copy_text_to_clipboard("diagnostics")
+
+    assert module.user32.CreateWindowExW.calls[0][1] == "STATIC"
+    assert module.user32.OpenClipboard.calls == [(clipboard_owner,)]
+    assert module.user32.SetClipboardData.calls[0][0] == module.CF_UNICODETEXT
+    assert module.user32.DestroyWindow.calls == [(clipboard_owner,)]
 
 
 def _load_windows_module(
