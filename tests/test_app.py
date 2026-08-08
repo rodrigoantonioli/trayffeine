@@ -32,9 +32,14 @@ class FakeSettingsStore:
             start_with_windows=True,
         )
         self.path = Path("/tmp/settings.json")
+        self.saved: list[StoredSettings] = []
 
     def load(self) -> StoredSettings:
         return self._settings
+
+    def save(self, settings: StoredSettings) -> None:
+        self._settings = settings
+        self.saved.append(settings)
 
 
 class FakeService:
@@ -82,6 +87,7 @@ def test_run_app_restores_only_infinite_mode(monkeypatch) -> None:
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
     fake_windows.set_start_with_windows_enabled = lambda enabled: startup_calls.append(enabled)
+    fake_windows.is_start_with_windows_enabled = lambda: True
     fake_windows.show_info_message_box = lambda title, message: None
     fake_windows.copy_text_to_clipboard = lambda text: None
 
@@ -165,6 +171,7 @@ def test_run_app_uses_f15_backend_when_presence_compatibility_is_enabled(
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
     fake_windows.set_start_with_windows_enabled = lambda enabled: None
+    fake_windows.is_start_with_windows_enabled = lambda: True
     fake_windows.show_info_message_box = lambda title, message: None
     fake_windows.copy_text_to_clipboard = lambda text: None
 
@@ -179,20 +186,17 @@ def test_run_app_uses_f15_backend_when_presence_compatibility_is_enabled(
         "default_log_path",
         lambda: Path("/tmp/trayffeine.log"),
     )
-    monkeypatch.setattr(
-        trayffeine.settings,
-        "SettingsStore",
-        lambda: FakeSettingsStore(
-            StoredSettings(
-                language_selection=LanguageSelection.auto(),
-                restore_infinite=False,
-                detailed_logging_enabled=False,
-                keepawake_method="execution-state",
-                start_with_windows=False,
-                presence_compatibility_enabled=True,
-            )
-        ),
+    settings_store = FakeSettingsStore(
+        StoredSettings(
+            language_selection=LanguageSelection.auto(),
+            restore_infinite=False,
+            detailed_logging_enabled=False,
+            keepawake_method="execution-state",
+            start_with_windows=False,
+            presence_compatibility_enabled=True,
+        )
     )
+    monkeypatch.setattr(trayffeine.settings, "SettingsStore", lambda: settings_store)
     monkeypatch.setitem(sys.modules, "trayffeine.windows", fake_windows)
 
     def create_service(*args, **kwargs):  # noqa: ANN002, ANN003
@@ -216,6 +220,7 @@ def test_run_app_uses_f15_backend_when_presence_compatibility_is_enabled(
     assert service.backend == "backend:f15"
     assert tray.kwargs["initial_keepawake_method"] == "execution-state"
     assert tray.kwargs["initial_presence_compatibility_enabled"] is True
+    assert settings_store.saved[-1].start_with_windows is True
 
     tray.kwargs["set_presence_compatibility_enabled"](False, "execution-state")
 
@@ -239,6 +244,7 @@ def test_run_app_logs_and_shows_dialog_on_unhandled_exception(monkeypatch, tmp_p
     fake_windows.show_message_box = lambda title, message: dialog_calls.append((title, message))
     fake_windows.open_path_in_shell = lambda path: None
     fake_windows.set_start_with_windows_enabled = lambda enabled: None
+    fake_windows.is_start_with_windows_enabled = lambda: True
     fake_windows.show_info_message_box = lambda title, message: None
     fake_windows.copy_text_to_clipboard = lambda text: None
 
@@ -297,6 +303,7 @@ def test_run_app_locks_detailed_logging_when_env_override_is_present(monkeypatch
     fake_windows.confirm_message_box = lambda title, message: True
     fake_windows.open_path_in_shell = lambda path: None
     fake_windows.set_start_with_windows_enabled = lambda enabled: None
+    fake_windows.is_start_with_windows_enabled = lambda: True
     fake_windows.show_info_message_box = lambda title, message: None
     fake_windows.copy_text_to_clipboard = lambda text: None
 
@@ -366,6 +373,7 @@ def test_run_app_continues_when_start_with_windows_sync_fails(monkeypatch) -> No
     fake_windows.set_start_with_windows_enabled = lambda enabled: startup_calls.append(enabled) or (
         _ for _ in ()
     ).throw(OSError("registry unavailable"))
+    fake_windows.is_start_with_windows_enabled = lambda: True
     fake_windows.show_info_message_box = lambda title, message: None
     fake_windows.copy_text_to_clipboard = lambda text: None
 

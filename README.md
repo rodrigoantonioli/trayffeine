@@ -181,7 +181,8 @@ Persisted preferences:
 Startup behavior:
 
 - `Start with Windows` is optional and disabled by default
-- when enabled, Trayffeine registers itself in the current-user Windows `Run` key
+- the EXE/Inno Setup/WinGet install registers itself in the current-user Windows `Run` key
+- the future MSIX package uses its declared Windows startup task instead, while keeping the same tray preference
 - timed sessions never resume after a restart
 - infinite mode can resume if it was active when the app last saved state
 
@@ -276,6 +277,7 @@ Environment override:
 - `src/trayffeine/win32_tray.py`: Windows-specific tray wrapper for double-click handling
 - `src/trayffeine/windows.py`: Windows keep-awake backends, dialogs, mutex, shell helpers, startup registration
 - `packaging/windows/`: PyInstaller spec, build script, Inno Setup installer script
+- `packaging/msix/`: isolated MSIX preflight build and manifest template for a future Store submission
 - `tests/`: unit and smoke-style tests
 - [CONTRIBUTING.md](CONTRIBUTING.md): contributor workflow and validation notes
 - [docs/ROADMAP.md](docs/ROADMAP.md): internal release buckets and backlog notes
@@ -339,6 +341,13 @@ Preview test flow:
 - wait for the `Preview Build` workflow to finish
 - download the uploaded installer artifact from the workflow run
 - test that installer on Windows before tagging a release
+
+### Future Microsoft Store MSIX package
+
+MSIX preparation is separate from the existing public installer and WinGet channel. The `MSIX Preview
+Build` workflow creates an unsigned, non-Store preflight artifact for pull requests and never creates
+a GitHub Release. See [docs/msix.md](docs/msix.md) for local build steps, package behavior, Partner
+Center identity values, and the later signing/submission checklist.
 
 ## Validation
 

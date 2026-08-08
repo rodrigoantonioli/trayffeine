@@ -48,7 +48,8 @@ Windows run as the final confidence step.
 - Preserve stable keep-awake method ids: `smart`, `execution-state`, `f15`, `shift`.
 - Keep backend lifecycle on the worker thread.
 - Timed sessions must never restore after restart.
-- `Start with Windows` is per-user and uses the current-user Windows `Run` key.
+- `Start with Windows` is per-user. The EXE/Inno Setup path uses the current-user Windows `Run` key;
+  the MSIX path uses the declared Windows startup task when package identity is present.
 - `Presence compatibility` is a separate persisted preference, not a keep-awake method id.
 - When presence compatibility is enabled, the saved normal method remains unchanged and the effective backend is `f15`.
 - Do not promise Teams or app-presence status. Document this as best effort and keep the stronger sleep-prevention language tied to `Windows API`.
@@ -62,6 +63,7 @@ When changing user-facing behavior, update public and maintainer docs together:
 - `CHANGELOG.md` for release-facing highlights
 - `docs/ROADMAP.md` when a planned bucket moves or a backlog item is delivered
 - `AGENTS.md` when future coding agents need the behavior or architecture rule
+- `docs/msix.md` when changing the MSIX package or Store-submission preparation
 
 For tray or support features, include the real Windows validation caveat unless the behavior was actually tested in a real tray session.
 
@@ -82,3 +84,4 @@ Release automation:
 - `Release` runs on tags matching `v*`
 - stable tags publish regular releases
 - `v*-beta*` tags publish prereleases and skip WinGet submission
+- `MSIX Preview Build` creates an unsigned preflight artifact only; it is isolated from tag releases

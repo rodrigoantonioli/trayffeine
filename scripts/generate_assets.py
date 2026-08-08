@@ -6,10 +6,12 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "assets"
+MSIX_ASSETS = ROOT / "packaging" / "msix" / "assets"
 
 
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
+    MSIX_ASSETS.mkdir(parents=True, exist_ok=True)
     active = create_icon(
         cup="#a05d2a",
         steam="#f5e2b8",
@@ -38,6 +40,30 @@ def main() -> None:
         ASSETS / "trayffeine-app.ico",
         sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
     )
+    create_msix_visual_assets(app_icon)
+
+
+def create_msix_visual_assets(app_icon: Image.Image) -> None:
+    for filename, size in (
+        ("Square44x44Logo.png", (44, 44)),
+        ("Square150x150Logo.png", (150, 150)),
+        ("StoreLogo.png", (50, 50)),
+    ):
+        _fit_icon(app_icon, size).save(MSIX_ASSETS / filename)
+
+    wide = Image.new("RGBA", (310, 150), (0, 0, 0, 0))
+    logo = _fit_icon(app_icon, (132, 132))
+    wide.alpha_composite(logo, ((wide.width - logo.width) // 2, (wide.height - logo.height) // 2))
+    wide.save(MSIX_ASSETS / "Wide310x150Logo.png")
+
+
+def _fit_icon(app_icon: Image.Image, size: tuple[int, int]) -> Image.Image:
+    image = Image.new("RGBA", size, (0, 0, 0, 0))
+    logo = app_icon.copy()
+    logo.thumbnail(size, Image.Resampling.LANCZOS)
+    image.alpha_composite(logo, ((size[0] - logo.width) // 2, (size[1] - logo.height) // 2))
+    return image
+
 
 def create_icon(*, cup: str, steam: str, accent: str, pressed: bool, shadow: str) -> Image.Image:
     image = Image.new("RGBA", (256, 256), (0, 0, 0, 0))

@@ -5,6 +5,8 @@ import importlib
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 
 class FakeFunction:
     def __init__(self, return_value=0) -> None:
@@ -149,6 +151,58 @@ def test_start_with_windows_delete_ignores_missing_value(monkeypatch) -> None:
     assert module.is_start_with_windows_enabled() is False
 
 
+def test_packaged_startup_uses_the_declared_startup_task(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+
+    class FakeStartupTask:
+        def __init__(self) -> None:
+            self.state = SimpleNamespace(name="DISABLED")
+            self.disable_calls = 0
+
+        def request_enable_async(self):  # noqa: ANN201
+            return SimpleNamespace(name="ENABLED")
+
+        def disable(self) -> None:
+            self.disable_calls += 1
+
+    task = FakeStartupTask()
+    monkeypatch.setattr(module, "is_packaged_app", lambda: True)
+    monkeypatch.setattr(module, "_get_packaged_startup_task", lambda: task)
+    monkeypatch.setattr(module, "_await_winrt_operation", lambda operation: operation)
+
+    assert module.is_start_with_windows_enabled() is False
+
+    module.set_start_with_windows_enabled(True)
+    module.set_start_with_windows_enabled(False)
+
+    assert task.disable_calls == 1
+
+
+def test_packaged_startup_does_not_override_a_user_disabled_task(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+    task = SimpleNamespace(
+        state=SimpleNamespace(name="DISABLED_BY_USER"),
+        request_enable_async=lambda: SimpleNamespace(name="DISABLED_BY_USER"),
+    )
+    monkeypatch.setattr(module, "is_packaged_app", lambda: True)
+    monkeypatch.setattr(module, "_get_packaged_startup_task", lambda: task)
+    monkeypatch.setattr(module, "_await_winrt_operation", lambda operation: operation)
+
+    assert module.is_start_with_windows_enabled() is False
+    with pytest.raises(RuntimeError, match="did not enable"):
+        module.set_start_with_windows_enabled(True)
+
+
+def test_is_packaged_app_uses_package_identity_detection(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+
+    module.kernel32.GetCurrentPackageFullName.return_value = module.APPMODEL_ERROR_NO_PACKAGE
+    assert module.is_packaged_app() is False
+
+    module.kernel32.GetCurrentPackageFullName.return_value = module.ERROR_INSUFFICIENT_BUFFER
+    assert module.is_packaged_app() is True
+
+
 def test_startup_launch_command_uses_pythonw_module_when_not_frozen(monkeypatch) -> None:
     module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
 
@@ -202,6 +256,7 @@ def _load_windows_module(
         CreateMutexW=FakeFunction(return_value=1),
         ReleaseMutex=FakeFunction(return_value=1),
         CloseHandle=FakeFunction(return_value=1),
+        GetCurrentPackageFullName=FakeFunction(return_value=15700),
     )
 
     def fake_windll(name: str, use_last_error: bool = True):  # noqa: ARG001

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import traceback
+from dataclasses import replace
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
@@ -70,6 +71,7 @@ def _run_app(
         confirm_message_box,
         copy_text_to_clipboard,
         create_keepawake_backend,
+        is_start_with_windows_enabled,
         open_path_in_shell,
         set_start_with_windows_enabled,
         show_info_message_box,
@@ -87,7 +89,14 @@ def _run_app(
             )
         )
     )
-    _sync_start_with_windows_setting(settings.start_with_windows, set_start_with_windows_enabled)
+    start_with_windows_enabled = _sync_start_with_windows_setting(
+        settings.start_with_windows,
+        set_start_with_windows_enabled,
+        is_start_with_windows_enabled,
+    )
+    if start_with_windows_enabled != settings.start_with_windows:
+        settings = replace(settings, start_with_windows=start_with_windows_enabled)
+        settings_store.save(settings)
     if settings.restore_infinite:
         service.activate(None, "infinite")
     tray = TrayIconController(
@@ -96,7 +105,7 @@ def _run_app(
         initial_language_selection=settings.language_selection,
         initial_keepawake_method=settings.keepawake_method,
         initial_presence_compatibility_enabled=settings.presence_compatibility_enabled,
-        initial_start_with_windows=settings.start_with_windows,
+        initial_start_with_windows=start_with_windows_enabled,
         settings_store=settings_store,
         settings_path=settings_store.path,
         log_path=log_path,
@@ -170,11 +179,20 @@ def _set_presence_compatibility_enabled(service, method, enabled: bool) -> None:
     )
 
 
-def _sync_start_with_windows_setting(enabled: bool, set_start_with_windows_enabled) -> None:  # noqa: ANN001
+def _sync_start_with_windows_setting(
+    enabled: bool,
+    set_start_with_windows_enabled,
+    is_start_with_windows_enabled,
+) -> bool:  # noqa: ANN001
     try:
         set_start_with_windows_enabled(enabled)
     except Exception:
         LOGGER.exception("Failed to sync start-with-Windows setting at startup")
+    try:
+        return is_start_with_windows_enabled()
+    except Exception:
+        LOGGER.exception("Failed to read start-with-Windows state at startup")
+        return enabled
 
 
 def _clear_logs(log_path: Path) -> None:

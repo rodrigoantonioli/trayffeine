@@ -1,0 +1,84 @@
+name: MSIX Preview Build
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "AGENTS.md"
+      - "CONTRIBUTING.md"
+      - "README.md"
+      - "assets/**"
+      - "docs/**"
+      - "packaging/msix/**"
+      - "packaging/windows/**"
+      - "pyproject.toml"
+      - "scripts/**"
+      - "src/**"
+      - "tests/**"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: msix-preview-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-msix-preflight:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: "pyproject.toml"
+
+      - name: Install Python dependencies
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[build,msix]
+
+      - name: Generate assets
+        shell: powershell
+        run: python scripts/generate_assets.py
+
+      - name: Build unsigned MSIX preflight package
+        shell: powershell
+        run: |
+          powershell -ExecutionPolicy Bypass -File packaging\msix\build.ps1 `
+            -IdentityName "Trayffeine.Preview" `
+            -Publisher "CN=Trayffeine Preview" `
+            -PublisherDisplayName "Trayffeine Preview" `
+            -Clean
+
+      - name: Verify repeatable MSIX build cleanup
+        shell: powershell
+        run: |
+          $stagingSentinel = "dist\msix\staging\__repeatability_sentinel.tmp"
+          $verificationSentinel = "dist\msix\verification\__repeatability_sentinel.tmp"
+          New-Item -ItemType File -Force -Path $stagingSentinel, $verificationSentinel | Out-Null
+
+          powershell -ExecutionPolicy Bypass -File packaging\msix\build.ps1 `
+            -IdentityName "Trayffeine.Preview" `
+            -Publisher "CN=Trayffeine Preview" `
+            -PublisherDisplayName "Trayffeine Preview"
+
+          if ((Test-Path $stagingSentinel) -or (Test-Path $verificationSentinel)) {
+            throw "The repeated MSIX build retained stale staging or verification files."
+          }
+
+      - name: Upload MSIX preflight artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trayffeine-msix-preflight-${{ github.event.pull_request.number || github.run_number }}
+          path: dist/msix/*.msix
+          if-no-files-found: error
