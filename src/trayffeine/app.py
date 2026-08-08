@@ -121,7 +121,9 @@ def _run_app(
         set_presence_compatibility_enabled=lambda enabled, method: (
             _set_presence_compatibility_enabled(service, method, enabled)
         ),
-        set_start_with_windows_enabled=lambda enabled: set_start_with_windows_enabled(enabled),
+        set_start_with_windows_enabled=lambda enabled: _set_start_with_windows_from_tray(
+            enabled, set_start_with_windows_enabled
+        ),
         detailed_logging_enabled=detailed_logging_enabled,
         detailed_logging_preference=settings.detailed_logging_enabled,
         detailed_logging_locked=detailed_logging_locked,
@@ -185,7 +187,9 @@ def _sync_start_with_windows_setting(
     is_start_with_windows_enabled,
 ) -> bool:  # noqa: ANN001
     try:
-        set_start_with_windows_enabled(enabled)
+        applied_state = set_start_with_windows_enabled(enabled)
+        if isinstance(applied_state, bool):
+            return applied_state
     except Exception:
         LOGGER.exception("Failed to sync start-with-Windows setting at startup")
     try:
@@ -193,6 +197,15 @@ def _sync_start_with_windows_setting(
     except Exception:
         LOGGER.exception("Failed to read start-with-Windows state at startup")
         return enabled
+
+
+def _set_start_with_windows_from_tray(
+    enabled: bool,
+    set_start_with_windows_enabled,
+) -> None:  # noqa: ANN001
+    applied_state = set_start_with_windows_enabled(enabled)
+    if isinstance(applied_state, bool) and applied_state != enabled:
+        raise RuntimeError("Windows did not apply the requested start-with-Windows state")
 
 
 def _clear_logs(log_path: Path) -> None:

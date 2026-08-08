@@ -397,14 +397,14 @@ def is_start_with_windows_enabled() -> bool:
     return _is_run_key_startup_enabled()
 
 
-def set_start_with_windows_enabled(enabled: bool) -> None:
+def set_start_with_windows_enabled(enabled: bool) -> bool:
     if is_packaged_app():
-        _set_packaged_startup_task_enabled(enabled)
-        return
+        return _set_packaged_startup_task_enabled(enabled)
     if enabled:
         _enable_start_with_windows()
-        return
-    _disable_start_with_windows()
+    else:
+        _disable_start_with_windows()
+    return _is_run_key_startup_enabled()
 
 
 def is_packaged_app() -> bool:
@@ -432,16 +432,25 @@ def _is_packaged_startup_task_enabled() -> bool:
     return _startup_task_state_name(task.state) in {"ENABLED", "ENABLED_BY_POLICY"}
 
 
-def _set_packaged_startup_task_enabled(enabled: bool) -> None:
+def _set_packaged_startup_task_enabled(enabled: bool) -> bool:
     task = _get_packaged_startup_task()
+    state_name = _startup_task_state_name(task.state)
+
     if not enabled:
+        if state_name in {"DISABLED", "DISABLED_BY_USER", "DISABLED_BY_POLICY"}:
+            return False
+        if state_name == "ENABLED_BY_POLICY":
+            return True
         task.disable()
-        return
+        return False
+
+    if state_name in {"ENABLED", "ENABLED_BY_POLICY"}:
+        return True
+    if state_name in {"DISABLED_BY_USER", "DISABLED_BY_POLICY"}:
+        return False
 
     state = _await_winrt_operation(task.request_enable_async())
-    state_name = _startup_task_state_name(state)
-    if state_name not in {"ENABLED", "ENABLED_BY_POLICY"}:
-        raise RuntimeError(f"Windows did not enable Trayffeine startup: {state_name}")
+    return _startup_task_state_name(state) in {"ENABLED", "ENABLED_BY_POLICY"}
 
 
 def _get_packaged_startup_task():  # noqa: ANN202

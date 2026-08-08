@@ -7,7 +7,12 @@ from types import ModuleType
 
 import pytest
 
-from trayffeine.app import _clear_logs, run_app
+from trayffeine.app import (
+    _clear_logs,
+    _set_start_with_windows_from_tray,
+    _sync_start_with_windows_setting,
+    run_app,
+)
 from trayffeine.i18n import LanguageSelection
 from trayffeine.settings import StoredSettings
 
@@ -421,6 +426,25 @@ def test_run_app_continues_when_start_with_windows_sync_fails(monkeypatch) -> No
     assert startup_calls == [True]
     assert created["service"].backend == "backend:execution-state"
     assert created["tray"].kwargs["initial_start_with_windows"] is True
+
+
+def test_start_with_windows_sync_uses_the_applied_state() -> None:
+    def unexpected_state_read() -> bool:
+        raise AssertionError("The setter already returned the applied state")
+
+    assert (
+        _sync_start_with_windows_setting(
+            True,
+            lambda enabled: False,
+            unexpected_state_read,
+        )
+        is False
+    )
+
+
+def test_start_with_windows_tray_rejects_an_unapplied_state() -> None:
+    with pytest.raises(RuntimeError, match="did not apply"):
+        _set_start_with_windows_from_tray(True, lambda enabled: False)
 
 
 def test_clear_logs_recreates_a_fresh_log_file(monkeypatch, tmp_path) -> None:

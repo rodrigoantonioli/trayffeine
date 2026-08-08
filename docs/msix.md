@@ -121,6 +121,19 @@ The script reads `pyproject.toml` by default and maps the current semantic versi
 `1.2.0`, to the four-part MSIX version `1.2.0.0`. A later Store update must increase that MSIX
 version; this preparation does not require a version bump.
 
+Before uploading the real submission candidate, run the current Windows App Certification Kit from
+an elevated command prompt in an active user session. Use the package built with the exact Partner
+Center identity, and review the generated report rather than assuming that a successful MakeAppx
+pack/unpack is equivalent to Store certification:
+
+```powershell
+$appCert = "${env:ProgramFiles(x86)}\Windows Kits\10\App Certification Kit\appcert.exe"
+& $appCert reset
+& $appCert test `
+  -appxpackagepath ".\dist\msix\Trayffeine-<version>-x64.msix" `
+  -reportoutputpath ".\dist\msix\wack-report.xml"
+```
+
 Finish the required Partner Center metadata before submission: pricing and availability, category and
 capability declarations, age rating, Store description, screenshots, Store listing artwork, support
 details, and a privacy-policy URL if the published data practices require one. Explain the
@@ -136,5 +149,6 @@ Useful official references:
 - [Manual desktop MSIX packaging](https://learn.microsoft.com/windows/msix/desktop/desktop-to-uwp-manual-conversion)
 - [Desktop startup task extension](https://learn.microsoft.com/windows/apps/desktop/modernize/desktop-to-uwp-extensions#start-an-executable-file-when-users-log-into-windows)
 - [MakeAppx command-line packaging](https://learn.microsoft.com/windows/msix/package/create-app-package-with-makeappx-tool)
+- [Windows App Certification Kit](https://learn.microsoft.com/windows/uwp/debug-test-perf/windows-app-certification-kit)
 - [MSIX signing options](https://learn.microsoft.com/windows/msix/package/signing-package-overview)
 - [Packaged desktop app state and AppData behavior](https://learn.microsoft.com/windows/msix/desktop/desktop-to-uwp-behind-the-scenes)
