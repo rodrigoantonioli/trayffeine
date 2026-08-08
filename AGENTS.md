@@ -29,6 +29,7 @@ Current product behavior:
 - persistent restore of infinite mode, while timed sessions always restart inactive
 - first launch defaults to infinite restore plus detailed logging enabled
 - per-user installer that always creates a Start Menu shortcut
+- future Store preparation through an isolated MSIX preflight package; it is not a published channel yet
 
 ## Environment Model
 
@@ -121,12 +122,17 @@ For real tray validation, run the app from a real Windows path.
   - dialogs
   - shell-open helper
   - clipboard helper for diagnostics
-  - current-user startup registration via the Windows `Run` key
+  - channel-aware startup registration: `Run` key for the EXE install and startup task for MSIX
 
 - `packaging/windows/`
   - `trayffeine.spec`: PyInstaller bundle definition
   - `build.ps1`: manual packaging entrypoint
   - `Trayffeine.iss`: Inno Setup installer script
+
+- `packaging/msix/`
+  - `AppxManifest.xml.template`: Store identity placeholders, full-trust entry point, and startup task
+  - `build.ps1`: isolated unsigned MSIX preflight builder using MakeAppx
+  - `README.md`: short pointer to the full Store-preparation procedure
 
 - `tests/`
   - unit and smoke-style coverage for session, presenter, i18n, logging, tray wiring, service behavior, and Windows integration helpers
@@ -175,6 +181,11 @@ For real tray validation, run the app from a real Windows path.
 - Keep diagnostics plain and stable.
   - the clipboard payload is support text, not localized UI copy
   - include version, language, session, methods, key preferences, settings path, and log path
+
+- Keep startup integration channel-aware.
+  - the EXE/Inno Setup/WinGet install must keep its current-user `Run` key behavior
+  - an MSIX package must use its declared `TrayffeineStartup` startup task, not a virtualized `Run` key
+  - do not try to override a startup task that the user disabled in Task Manager
 
 ## Persistence Model
 
@@ -243,6 +254,7 @@ When changing logging:
 - The installer is unsigned.
 - Installer changes belong in `packaging/windows/Trayffeine.iss`.
 - Keep the release workflow Windows-only for installer generation.
+- Keep the MSIX preflight workflow separate from tags, GitHub Releases, and WinGet updates.
 
 ## Testing Expectations
 
@@ -275,6 +287,7 @@ GitHub workflows:
 
 - `CI` runs on push to `main` and on pull requests
 - `Preview Build` runs on pull requests and manual dispatch, publishing a Windows installer artifact for testing
+- `MSIX Preview Build` runs on relevant pull requests and manual dispatch, publishing only an unsigned preflight artifact
 - `Release` runs only on tags `v*`
 - stable tags such as `v1.2.0` publish normal releases
 - tags matching `v*-beta*` publish GitHub prereleases

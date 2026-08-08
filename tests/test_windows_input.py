@@ -5,6 +5,8 @@ import importlib
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 
 class FakeFunction:
     def __init__(self, return_value=0) -> None:
@@ -149,6 +151,84 @@ def test_start_with_windows_delete_ignores_missing_value(monkeypatch) -> None:
     assert module.is_start_with_windows_enabled() is False
 
 
+def test_packaged_startup_uses_the_declared_startup_task(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+
+    class FakeStartupTask:
+        def __init__(self) -> None:
+            self.state = SimpleNamespace(name="DISABLED")
+            self.disable_calls = 0
+            self.request_enable_calls = 0
+
+        def request_enable_async(self):  # noqa: ANN201
+            self.request_enable_calls += 1
+            self.state = SimpleNamespace(name="ENABLED")
+            return SimpleNamespace(name="ENABLED")
+
+        def disable(self) -> None:
+            self.disable_calls += 1
+
+    task = FakeStartupTask()
+    monkeypatch.setattr(module, "is_packaged_app", lambda: True)
+    monkeypatch.setattr(module, "_get_packaged_startup_task", lambda: task)
+    monkeypatch.setattr(module, "_await_winrt_operation", lambda operation: operation)
+
+    assert module.is_start_with_windows_enabled() is False
+
+    assert module.set_start_with_windows_enabled(True) is True
+    assert module.set_start_with_windows_enabled(False) is False
+
+    assert task.request_enable_calls == 1
+    assert task.disable_calls == 1
+
+
+def test_packaged_startup_does_not_override_a_user_disabled_task(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+    request_enable_calls = 0
+
+    def request_enable_async():
+        nonlocal request_enable_calls
+        request_enable_calls += 1
+        raise AssertionError("RequestEnableAsync must not run for a user-disabled task")
+
+    task = SimpleNamespace(
+        state=SimpleNamespace(name="DISABLED_BY_USER"),
+        request_enable_async=request_enable_async,
+    )
+    monkeypatch.setattr(module, "is_packaged_app", lambda: True)
+    monkeypatch.setattr(module, "_get_packaged_startup_task", lambda: task)
+    monkeypatch.setattr(module, "_await_winrt_operation", lambda operation: operation)
+
+    assert module.is_start_with_windows_enabled() is False
+    assert module.set_start_with_windows_enabled(True) is False
+    assert request_enable_calls == 0
+
+
+@pytest.mark.parametrize("state_name", ["DISABLED_BY_POLICY", "ENABLED_BY_POLICY"])
+def test_packaged_startup_respects_policy_state(monkeypatch, state_name: str) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+    task = SimpleNamespace(
+        state=SimpleNamespace(name=state_name),
+        request_enable_async=lambda: (_ for _ in ()).throw(
+            AssertionError("RequestEnableAsync must not override policy")
+        ),
+    )
+    monkeypatch.setattr(module, "is_packaged_app", lambda: True)
+    monkeypatch.setattr(module, "_get_packaged_startup_task", lambda: task)
+
+    assert module.set_start_with_windows_enabled(True) is (state_name == "ENABLED_BY_POLICY")
+
+
+def test_is_packaged_app_uses_package_identity_detection(monkeypatch) -> None:
+    module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
+
+    module.kernel32.GetCurrentPackageFullName.return_value = module.APPMODEL_ERROR_NO_PACKAGE
+    assert module.is_packaged_app() is False
+
+    module.kernel32.GetCurrentPackageFullName.return_value = module.ERROR_INSUFFICIENT_BUFFER
+    assert module.is_packaged_app() is True
+
+
 def test_startup_launch_command_uses_pythonw_module_when_not_frozen(monkeypatch) -> None:
     module, _, _ = _load_windows_module(monkeypatch, send_input_result=2)
 
@@ -202,6 +282,7 @@ def _load_windows_module(
         CreateMutexW=FakeFunction(return_value=1),
         ReleaseMutex=FakeFunction(return_value=1),
         CloseHandle=FakeFunction(return_value=1),
+        GetCurrentPackageFullName=FakeFunction(return_value=15700),
     )
 
     def fake_windll(name: str, use_last_error: bool = True):  # noqa: ARG001

@@ -25,6 +25,9 @@ dev = [
 build = [
   "pyinstaller>=6.11.0",
 ]
+msix = [
+  "winrt-Windows.ApplicationModel~=3.2.1; platform_system == 'Windows'",
+]
 
 [project.scripts]
 trayffeine = "trayffeine.__main__:main"

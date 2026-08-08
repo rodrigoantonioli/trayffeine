@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import ctypes
 import logging
 import os
@@ -25,6 +26,8 @@ KEYEVENTF_KEYUP = 0x0002
 VK_SHIFT = 0x10
 VK_F15 = 0x7E
 ERROR_ALREADY_EXISTS = 183
+ERROR_INSUFFICIENT_BUFFER = 122
+APPMODEL_ERROR_NO_PACKAGE = 15700
 ULONG_PTR = ctypes.c_size_t
 MB_OK = 0x00000000
 MB_ICONERROR = 0x00000010
@@ -40,6 +43,7 @@ ES_DISPLAY_REQUIRED = 0x00000002
 ES_CONTINUOUS = 0x80000000
 RUN_KEY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
 RUN_VALUE_NAME = "Trayffeine"
+STARTUP_TASK_ID = "TrayffeineStartup"
 
 
 class MOUSEINPUT(ctypes.Structure):
@@ -99,6 +103,8 @@ kernel32.ReleaseMutex.argtypes = (wintypes.HANDLE,)
 kernel32.ReleaseMutex.restype = wintypes.BOOL
 kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
 kernel32.CloseHandle.restype = wintypes.BOOL
+kernel32.GetCurrentPackageFullName.argtypes = (ctypes.POINTER(DWORD), wintypes.LPWSTR)
+kernel32.GetCurrentPackageFullName.restype = LONG
 user32.MessageBoxW.argtypes = (
     wintypes.HWND,
     wintypes.LPCWSTR,
@@ -386,6 +392,32 @@ def _windowless_python_executable(executable: str) -> str:
 
 
 def is_start_with_windows_enabled() -> bool:
+    if is_packaged_app():
+        return _is_packaged_startup_task_enabled()
+    return _is_run_key_startup_enabled()
+
+
+def set_start_with_windows_enabled(enabled: bool) -> bool:
+    if is_packaged_app():
+        return _set_packaged_startup_task_enabled(enabled)
+    if enabled:
+        _enable_start_with_windows()
+    else:
+        _disable_start_with_windows()
+    return _is_run_key_startup_enabled()
+
+
+def is_packaged_app() -> bool:
+    length = DWORD()
+    result = kernel32.GetCurrentPackageFullName(ctypes.byref(length), None)
+    if result == APPMODEL_ERROR_NO_PACKAGE:
+        return False
+    if result in (0, ERROR_INSUFFICIENT_BUFFER):
+        return True
+    raise OSError(result, "GetCurrentPackageFullName failed")
+
+
+def _is_run_key_startup_enabled() -> bool:
     winreg = _winreg_module()
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY_PATH) as key:
@@ -395,11 +427,52 @@ def is_start_with_windows_enabled() -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def set_start_with_windows_enabled(enabled: bool) -> None:
-    if enabled:
-        _enable_start_with_windows()
-        return
-    _disable_start_with_windows()
+def _is_packaged_startup_task_enabled() -> bool:
+    task = _get_packaged_startup_task()
+    return _startup_task_state_name(task.state) in {"ENABLED", "ENABLED_BY_POLICY"}
+
+
+def _set_packaged_startup_task_enabled(enabled: bool) -> bool:
+    task = _get_packaged_startup_task()
+    state_name = _startup_task_state_name(task.state)
+
+    if not enabled:
+        if state_name in {"DISABLED", "DISABLED_BY_USER", "DISABLED_BY_POLICY"}:
+            return False
+        if state_name == "ENABLED_BY_POLICY":
+            return True
+        task.disable()
+        return False
+
+    if state_name in {"ENABLED", "ENABLED_BY_POLICY"}:
+        return True
+    if state_name in {"DISABLED_BY_USER", "DISABLED_BY_POLICY"}:
+        return False
+
+    state = _await_winrt_operation(task.request_enable_async())
+    return _startup_task_state_name(state) in {"ENABLED", "ENABLED_BY_POLICY"}
+
+
+def _get_packaged_startup_task():  # noqa: ANN202
+    try:
+        from winrt.windows.applicationmodel import StartupTask
+    except ImportError as exc:
+        raise RuntimeError(
+            "MSIX startup support is unavailable. Rebuild the package with the msix dependency."
+        ) from exc
+    return _await_winrt_operation(StartupTask.get_async(STARTUP_TASK_ID))
+
+
+async def _await_operation(operation):  # noqa: ANN001, ANN202
+    return await operation
+
+
+def _await_winrt_operation(operation):  # noqa: ANN001, ANN202
+    return asyncio.run(_await_operation(operation))
+
+
+def _startup_task_state_name(state: object) -> str:
+    return getattr(state, "name", str(state))
 
 
 def _enable_start_with_windows() -> None:
