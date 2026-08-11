@@ -163,7 +163,7 @@ Diagnostics include:
 - current session summary
 - configured and effective keep-awake methods
 - presence compatibility, detailed logging, and Start with Windows states
-- settings and log file paths
+- settings and log file paths, with the current profile prefix replaced by `%LOCALAPPDATA%` or `%USERPROFILE%`
 
 ## Preferences and Persistence
 
@@ -282,6 +282,8 @@ Environment override:
 - [CONTRIBUTING.md](CONTRIBUTING.md): contributor workflow and validation notes
 - [docs/ROADMAP.md](docs/ROADMAP.md): internal release buckets and backlog notes
 - [CHANGELOG.md](CHANGELOG.md): project history and milestone summary
+- `requirements-windows-build.lock` and `requirements-msix-build.lock`: exact, hash-verified
+  dependencies for distributable builds
 
 ## Local Development
 
@@ -322,7 +324,7 @@ Manual Windows packaging:
 ```powershell
 py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
-python -m pip install -e .[build]
+python -m pip install --require-hashes -r requirements-windows-build.lock
 python scripts\generate_assets.py
 powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Version 1.2.0 -Clean
 ```
@@ -331,9 +333,14 @@ GitHub Actions:
 
 - `CI` runs on pushes to `main` and on pull requests
 - `Preview Build` runs on pull requests and manual dispatch, building a Windows installer artifact without creating a release
-- `Release` runs only on tags matching `v*`
-- tags matching `v*-beta*` publish prereleases
+- `Release` runs only on validated tags such as `v1.2.0`, `v1.2.0-beta1`, or
+  `v1.2.0-beta.1`
+- beta tags publish prereleases and skip WinGet
 - stable tags such as `v1.2.0` publish normal releases
+- distributable builds use commit-pinned Actions, hash-locked Python dependencies, and verified
+  Inno Setup/WingetCreate binaries
+- publication is separated from the unprivileged build and is gated by the protected `release`
+  GitHub Environment
 
 Preview test flow:
 
@@ -368,6 +375,10 @@ When reporting a bug, include:
 - steps to reproduce
 - the text from `Support > Copy diagnostics`
 - the contents of `%LOCALAPPDATA%\Trayffeine\logs\trayffeine.log`
+
+Diagnostics replace the standard profile prefix with an environment-variable marker. Review copied
+diagnostics and logs before posting them publicly because logs can still contain environment-specific
+details.
 
 Contribution notes live in [CONTRIBUTING.md](CONTRIBUTING.md).
 

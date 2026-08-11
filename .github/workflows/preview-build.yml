@@ -13,6 +13,7 @@ on:
       - "packaging/winget/**"
       - "packaging/windows/**"
       - "pyproject.toml"
+      - "requirements-*.lock"
       - "scripts/**"
       - "src/**"
       - "tests/**"
@@ -33,24 +34,24 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v6
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          python-version: "3.13"
+          persist-credentials: false
+
+      - name: Set up Python 3.13.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13.12"
           cache: "pip"
-          cache-dependency-path: "pyproject.toml"
+          cache-dependency-path: "requirements-windows-build.lock"
 
-      - name: Install Inno Setup
+      - name: Install verified Inno Setup
         shell: powershell
-        run: choco install innosetup -y --no-progress
+        run: powershell -ExecutionPolicy Bypass -File packaging\windows\install-inno-setup.ps1
 
-      - name: Install Python dependencies
+      - name: Install locked Python dependencies
         shell: powershell
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[build]
+        run: python -m pip install --require-hashes -r requirements-windows-build.lock
 
       - name: Generate assets
         shell: powershell
@@ -62,7 +63,7 @@ jobs:
           powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1 -Clean
 
       - name: Upload preview installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trayffeine-preview-installer-${{ github.event.pull_request.number || github.run_number }}
           path: dist/installer/*.exe

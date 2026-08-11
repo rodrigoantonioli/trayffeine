@@ -54,6 +54,8 @@ Windows run as the final confidence step.
 - When presence compatibility is enabled, the saved normal method remains unchanged and the effective backend is `f15`.
 - Do not promise Teams or app-presence status. Document this as best effort and keep the stronger sleep-prevention language tied to `Windows API`.
 - Keep diagnostics stable and support-oriented. The clipboard payload should remain plain English key-value text so it is easy to paste into issues.
+- Keep diagnostic paths profile-neutral. Known user-profile prefixes must be rendered as
+  `%LOCALAPPDATA%` or `%USERPROFILE%` before the text is copied.
 
 ## Documentation Notes
 
@@ -81,7 +83,29 @@ Release automation:
 
 - `CI` runs on pushes to `main` and on pull requests
 - `Preview Build` runs on pull requests and `workflow_dispatch`, uploading a Windows installer artifact for review builds
-- `Release` runs on tags matching `v*`
+- `Release` accepts only three-component stable tags such as `v1.2.0` and beta forms such as
+  `v1.2.0-beta1`, `v1.2.0-beta.1`, or `v1.2.0-beta-1`
 - stable tags publish regular releases
-- `v*-beta*` tags publish prereleases and skip WinGet submission
+- validated beta tags publish prereleases and skip WinGet submission
 - `MSIX Preview Build` creates an unsigned preflight artifact only; it is isolated from tag releases
+
+Release security requirements:
+
+- keep GitHub Actions pinned to reviewed full commit SHAs
+- install artifact-build dependencies from `requirements-windows-build.lock` or
+  `requirements-msix-build.lock` with `--require-hashes`
+- keep the Inno Setup and WingetCreate version, digest, and signer checks intact
+- pass Git refs into PowerShell through environment variables, never by interpolating an Actions
+  expression directly into script source
+- keep artifact construction in a read-only job and credentialed publication behind the protected
+  `release` GitHub Environment
+
+To intentionally refresh the build locks on Windows with Python 3.13:
+
+```powershell
+python -m pip install pip==25.3 pip-tools==7.5.2
+python -m piptools compile pyproject.toml --extra build --generate-hashes --strip-extras --allow-unsafe --output-file requirements-windows-build.lock
+python -m piptools compile pyproject.toml --extra build --extra msix --generate-hashes --strip-extras --allow-unsafe --output-file requirements-msix-build.lock
+```
+
+Review every resolved version and hash change before committing regenerated locks.
