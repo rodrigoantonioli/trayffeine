@@ -32,6 +32,7 @@ Conditions:
 - the tag must be a stable tag such as `v1.2.0`
 - beta tags such as `v1.2.0-beta1` skip WinGet submission
 - the repository must define the Actions secret `WINGET_GITHUB_PAT`
+- the credentialed publication job must remain behind the protected `release` GitHub Environment
 
 Required secret:
 
@@ -44,7 +45,10 @@ The workflow derives:
 - version: from the tag without the leading `v`
 - installer URL: from the GitHub release asset naming convention
 
-The helper script for that path is [`update.ps1`](./update.ps1).
+The helper script for that path is [`update.ps1`](./update.ps1). It downloads the fixed
+WingetCreate `v1.12.8.0` release into a unique temporary directory, verifies its SHA-256 digest and
+Microsoft Authenticode signer, and only then passes the token to the process. Update the version,
+digest, and expected signer together after independently verifying a newer official release.
 
 ## Manual Fallback
 

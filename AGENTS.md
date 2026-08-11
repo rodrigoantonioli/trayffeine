@@ -255,6 +255,14 @@ When changing logging:
 - Installer changes belong in `packaging/windows/Trayffeine.iss`.
 - Keep the release workflow Windows-only for installer generation.
 - Keep the MSIX preflight workflow separate from tags, GitHub Releases, and WinGet updates.
+- Keep all GitHub Actions references pinned to reviewed full commit SHAs.
+- Distributable builds must install from the checked-in hash-locked requirements files.
+- Release tags must cross into PowerShell as environment data and pass the strict release-tag
+  validator before build or publication.
+- Keep artifact construction read-only and keep credentialed GitHub Release/WinGet publication
+  behind the protected `release` GitHub Environment.
+- Keep external installer and WinGet tooling fixed by version and verified by digest and expected
+  Authenticode signer before execution.
 
 ## Testing Expectations
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ntpath
+import os
 from dataclasses import dataclass
 
 from .keepawake import KeepAwakeMethod
@@ -34,11 +36,30 @@ def build_diagnostics_text(info: DiagnosticsInfo) -> str:
             f"Presence compatibility: {_enabled_text(info.presence_compatibility_enabled)}",
             f"Detailed logging: {_enabled_text(info.detailed_logging_enabled)}",
             f"Start with Windows: {_enabled_text(info.start_with_windows)}",
-            f"Settings path: {info.settings_path}",
-            f"Log path: {info.log_path}",
+            f"Settings path: {_privacy_safe_path(info.settings_path)}",
+            f"Log path: {_privacy_safe_path(info.log_path)}",
         ]
     )
 
 
 def _enabled_text(enabled: bool) -> str:
     return "enabled" if enabled else "disabled"
+
+
+def _privacy_safe_path(path: str) -> str:
+    normalized_path = path.replace("/", "\\")
+    for variable_name in ("LOCALAPPDATA", "USERPROFILE"):
+        raw_prefix = os.environ.get(variable_name)
+        if not raw_prefix:
+            continue
+
+        normalized_prefix = raw_prefix.replace("/", "\\").rstrip("\\")
+        comparable_path = ntpath.normcase(normalized_path)
+        comparable_prefix = ntpath.normcase(normalized_prefix)
+        if comparable_path == comparable_prefix:
+            return f"%{variable_name}%"
+        if comparable_path.startswith(f"{comparable_prefix}\\"):
+            suffix = normalized_path[len(normalized_prefix) :]
+            return f"%{variable_name}%{suffix}"
+
+    return path
